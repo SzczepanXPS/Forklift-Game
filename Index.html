@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #d2d2d2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    
+let forklift, rackSystem, bufferZone, nameInput;
+let boxes = [], pedestrians = [], leaderboard = [], puddles = [];
+let obstacles = [], movingObstacles = [];
+let bloodPuddles = [], explosions = [];
+let bloodSplatters = [];
+let pedestriansKilled = 0;
+let gameState = "NAME_INPUT";
+let score = 0, playerName = "";
+let startTime, pausedTime = 0, pauseStart = 0;
+let leaderboardScroll = 0;
+let gameFrames = 0;
+let washedInPuddle = false;
+let forkliftBloody = false;
+let instructor;
+let instructorAngryTimer = 0;
+let palletsPickedUp = 0;
+let palletsStacked = 0;
+let aiForkliftSpawned = false;
+let oilPuddle;
+let oilSpinning = false;
+let oilSpinFrames = 0;
+let oilSpinTarget = 0;
+let oilSlideAngle = 0;
+let oilHit = false;
+let timeRemaining = 300;
+
+const CW = 1056;
+const CH = 660;
+const GAME_TIME = 300;
+
+const RESPAWN_TIME = 600;
+const OIL_SPIN_DURATION = 40;
+const OIL_SLIDE_DISTANCE = 25;
+
+const roadSegments = [
+  { x: 30, y: 410, w: 110, h: 250 },
+  { x: 140, y: 520, w: 240, h: 110 },
+  { x: 30, y: 300, w: 110, h: 220 },
+  { x: 140, y: 300, w: 145, h: 110 },
+  { x: 285, y: 50, w: 110, h: 360 },
+  { x: 395, y: 50, w: 400, h: 110 },
+  { x: 685, y: 160, w: 110, h: 340 },
+  { x: 685, y: 500, w: 126, h: 110 }
+];
+
+const zebraCrossings = [
+  { x: 500, y: 50, w: 60, h: 110, type: 'horizontal-road' },
+  { x: 685, y: 340, w: 110, h: 50, type: 'vertical-road' }
+];
+
+function setup() {
+  createCanvas(CW, CH);
+  nameInput = createInput('');
+  nameInput.position(width / 2 - 100, height / 2 + 20);
+  nameInput.size(200);
+  loadLeaderboard();
+  initGame();
+}
+
+function initGame() {
+  score = 0;
+  pausedTime = 0;
+  pauseStart = 0;
+  leaderboardScroll = 0;
+  gameFrames = 0;
+  bloodPuddles = [];
+  explosions = [];
+  bloodSplatters = [];
+  pedestriansKilled = 0;
+  washedInPuddle = false;
+  forkliftBloody = false;
+  instructorAngryTimer = 0;
+  palletsPickedUp = 0;
+  palletsStacked = 0;
+  aiForkliftSpawned = false;
+  oilSpinning = false;
+  oilSpinFrames = 0;
+  oilSpinTarget = 0;
+  oilSlideAngle = 0;
+  oilHit = false;
+  timeRemaining = GAME_TIME;
+  forklift = { x: 80, y: 600, w: 50, h: 35, angle: -PI / 2, speed: 0, forkExt: 0, carriedBox: null, turnSpeed: 0.05, currentSpeedMult: 1 };
+
+  instructor = { x: CW / 2, y: CH / 2, angle: 0 };
+
+  oilPuddle = { x: 600, y: 115, w: 40, h: 28 };
+
+  puddles = [
+    { x: 320, y: 100, w: 45, h: 33 },
+    { x: 120, y: 400, w: 30, h: 60 }
+  ];
+
+  bufferZone = { x: 250, y: 520, w: 150, h: 140 };
+  rackSystem = {
+    x: 471, y: 450, w: 480, h: 200,
+    slots: [
+      { x: 490, y: 620, full: false }, { x: 540, y: 620, full: false },
+      { x: 490, y: 560, full: false }, { x: 540, y: 560, full: false },
+      { x: 490, y: 500, full: false }, { x: 540, y: 500, full: false }
+    ]
+  };
+
+  boxes = [
+    { x: 260, y: 530, w: 30, h: 30, color: '#8B4513', status: 'floor', pickedFromBuffer: false },
+    { x: 310, y: 530, w: 30, h: 30, color: '#D2691E', status: 'floor', pickedFromBuffer: false },
+    { x: 360, y: 530, w: 30, h: 30, color: '#DEB887', status: 'floor', pickedFromBuffer: false },
+    { x: 260, y: 580, w: 30, h: 30, color: '#A0522D', status: 'floor', pickedFromBuffer: false },
+    { x: 310, y: 580, w: 30, h: 30, color: '#CD853F', status: 'floor', pickedFromBuffer: false },
+    { x: 360, y: 580, w: 30, h: 30, color: '#6B4226', status: 'floor', pickedFromBuffer: false }
+  ];
+
+  pedestrians = [
+    { x: 545, y: 75, sx: 0, sy: 1.1, minY: -50, maxY: 260, col: '#2ecc71', type: 'simple', dx: 1, dy: 1, alive: true, deathTimer: 0, spawnX: 545, spawnY: 75, respawning: false, respawnTargetX: 545, respawnTargetY: 75, respawnFrom: 'auto', spawned: true },
+    { x: 740, y: 365, sx: 2.1, sy: 0, minX: 585, maxX: 895, col: '#f1c40f', type: 'simple', dx: 1, dy: 1, alive: true, deathTimer: 0, spawnX: 740, spawnY: 365, respawning: false, respawnTargetX: 740, respawnTargetY: 365, respawnFrom: 'right', spawned: false },
+    {
+      x: 560, y: 80, col: '#9b59b6', type: 'patrol',
+      waypointIndex: 0,
+      speed: 2.5,
+      dx: 1, dy: 1,
+      alive: true,
+      deathTimer: 0,
+      spawnX: 560,
+      spawnY: 80,
+      respawning: false,
+      respawnTargetX: 560,
+      respawnTargetY: 80,
+      respawnFrom: 'auto',
+      spawned: false,
+      waypoints: [
+        { x: 555, y: 0 },
+        { x: 555, y: 360 },
+        { x: 900, y: 360 },
+        { x: 555, y: 360 },
+      ]
+    },
+    { x: 515, y: 105, sx: 0, sy: 3.2, minY: -50, maxY: 260, col: '#e74c3c', type: 'simple', dx: 1, dy: 1, alive: true, deathTimer: 0, spawnX: 515, spawnY: 105, respawning: false, respawnTargetX: 515, respawnTargetY: 105, respawnFrom: 'auto', spawned: false }
+  ];
+
+  obstacles = [
+    { x: 340, y: 320, w: 12, h: 12, type: 'cone', active: true },
+    { x: 360, y: 320, w: 12, h: 12, type: 'cone', active: true },
+    { x: 380, y: 320, w: 12, h: 12, type: 'cone', active: true },
+    { x: 230, y: 540, w: 12, h: 12, type: 'cone', active: true },
+    { x: 230, y: 560, w: 12, h: 12, type: 'cone', active: true },
+    { x: 700, y: 80, w: 12, h: 12, type: 'cone', active: true },
+    { x: 720, y: 80, w: 12, h: 12, type: 'cone', active: true },
+    { x: 730, y: 200, w: 12, h: 12, type: 'cone', active: true },
+    { x: 730, y: 230, w: 12, h: 12, type: 'cone', active: true },
+  ];
+
+  movingObstacles = [
+    {
+      x: -50, y: 480, w: 40, h: 28, type: 'forklift',
+      speed: 1.2, angle: 0,
+      waypointIndex: 0,
+      alive: true,
+      wrecked: false,
+      spawned: false,
+      entering: false,
+      enterTargetX: 640,
+      enterTargetY: 480,
+      waypoints: [
+        { x: 640, y: 480 },
+        { x: 640, y: 600 },
+        { x: 840, y: 600 },
+        { x: 840, y: 480 }
+      ]
+    }
+  ];
+}
+
+function triggerInstructorAngry() {
+  instructorAngryTimer = 90;
+}
+
+function getClosestEdgeForAI(tx, ty) {
+  var distTop = ty;
+  var distBottom = CH - ty;
+  var distLeft = tx;
+  var distRight = CW - tx;
+  var minDist = min(distTop, distBottom, distLeft, distRight);
+  if (minDist === distLeft) { return { x: -50, y: ty }; }
+  else if (minDist === distRight) { return { x: CW + 50, y: ty }; }
+  else if (minDist === distTop) { return { x: tx, y: -50 }; }
+  else { return { x: tx, y: CH + 50 }; }
+}
+
+function checkAIForkliftSpawn() {
+  if (palletsPickedUp >= 5 && !aiForkliftSpawned) {
+    aiForkliftSpawned = true;
+    var mo = movingObstacles[0];
+    mo.spawned = true;
+    mo.entering = true;
+    var firstWP = mo.waypoints[0];
+    var edge = getClosestEdgeForAI(firstWP.x, firstWP.y);
+    mo.x = edge.x;
+    mo.y = edge.y;
+    mo.enterTargetX = firstWP.x;
+    mo.enterTargetY = firstWP.y;
+    mo.angle = atan2(firstWP.y - edge.y, firstWP.x - edge.x);
+  }
+}
+
+function safeDropBox(box, dropX, dropY, dropAngle) {
+  var boxCX = dropX + 15;
+  var boxCY = dropY + 15;
+  if (dist(boxCX, boxCY, forklift.x, forklift.y) < 45) {
+    var pushDist = 50;
+    for (var attempt = 0; attempt < 8; attempt++) {
+      var testAngle = dropAngle + (attempt * PI / 4);
+      var newX = forklift.x + cos(testAngle) * (50 + pushDist) - 15;
+      var newY = forklift.y + sin(testAngle) * (50 + pushDist) - 15;
+      if (isSafe(newX + 15, newY + 15) && dist(newX + 15, newY + 15, forklift.x, forklift.y) >= 45) {
+        box.x = newX; box.y = newY; box.status = 'floor'; return;
+      }
+    }
+    box.x = forklift.x + cos(dropAngle) * 70 - 15;
+    box.y = forklift.y + sin(dropAngle) * 70 - 15;
+    box.status = 'floor';
+  } else if (isSafe(boxCX, boxCY)) {
+    box.x = dropX; box.y = dropY; box.status = 'floor';
+  } else {
+    for (var a = 0; a < 8; a++) {
+      var angle = dropAngle + (a * PI / 4);
+      var safeX = forklift.x + cos(angle) * 60 - 15;
+      var safeY = forklift.y + sin(angle) * 60 - 15;
+      if (isSafe(safeX + 15, safeY + 15) && dist(safeX + 15, safeY + 15, forklift.x, forklift.y) >= 45) {
+        box.x = safeX; box.y = safeY; box.status = 'floor'; return;
+      }
+    }
+    box.x = forklift.x + cos(dropAngle) * 70 - 15;
+    box.y = forklift.y + sin(dropAngle) * 70 - 15;
+    box.status = 'floor';
+  }
+}
+
+function spawnNewPedestrian(p) {
+  p.spawned = true;
+  p.alive = true;
+  p.respawning = true;
+  var edgePoint;
+  if (p.respawnFrom === 'left') { edgePoint = { x: -30, y: p.spawnY }; }
+  else if (p.respawnFrom === 'right') { edgePoint = { x: CW + 30, y: p.spawnY }; }
+  else if (p.respawnFrom === 'top') { edgePoint = { x: p.spawnX, y: -30 }; }
+  else if (p.respawnFrom === 'bottom') { edgePoint = { x: p.spawnX, y: CH + 30 }; }
+  else { edgePoint = getClosestEdgePoint(p.spawnX, p.spawnY); }
+  p.x = edgePoint.x;
+  p.y = edgePoint.y;
+  p.respawnTargetX = p.spawnX;
+  p.respawnTargetY = p.spawnY;
+  p.dx = 1;
+  p.dy = 1;
+  if (p.type === 'patrol') { p.waypointIndex = 0; }
+}
+
+function checkPedestrianSpawns() {
+  if (palletsPickedUp >= 2 && !pedestrians[1].spawned) { spawnNewPedestrian(pedestrians[1]); }
+  if (palletsPickedUp >= 3 && !pedestrians[2].spawned) { spawnNewPedestrian(pedestrians[2]); }
+  if (palletsPickedUp >= 4 && !pedestrians[3].spawned) { spawnNewPedestrian(pedestrians[3]); }
+}
+
+function draw() {
+  background(210);
+  if (gameState === "NAME_INPUT") drawMenu();
+  else if (gameState === "LEADERBOARD") drawLeaderboard();
+  else if (gameState === "PAUSED") { drawWorld(); drawPauseScreen(); }
+  else {
+    nameInput.hide();
+    drawWorld();
+    if (gameState === "PLAYING") {
+      updateGame();
+      timeRemaining = GAME_TIME - (millis() - startTime - pausedTime) / 1000;
+      if (timeRemaining <= 0) { timeRemaining = 0; endGame("TIME_UP"); }
+    } else { drawEndScreen(); }
+  }
+}
+
+function drawRoadEdges() {
+  stroke(255, 140, 0); strokeWeight(3);
+  line(30, 660, 140, 660);
+  line(30, 410, 30, 660);
+  line(140, 410, 140, 520);
+  line(140, 630, 140, 660);
+  line(140, 520, 380, 520);
+  line(140, 630, 380, 630);
+  line(380, 520, 380, 630);
+  line(30, 300, 140, 300);
+  line(30, 300, 30, 520);
+  line(140, 300, 285, 300);
+  line(140, 410, 285, 410);
+  line(285, 50, 395, 50);
+  line(285, 410, 395, 410);
+  line(285, 50, 285, 300);
+  line(395, 160, 395, 410);
+  line(395, 50, 795, 50);
+  line(395, 160, 685, 160);
+  line(795, 50, 795, 160);
+  line(685, 160, 685, 500);
+  line(795, 160, 795, 500);
+  line(795, 500, 811, 500);
+  line(685, 610, 811, 610);
+  line(685, 500, 685, 610);
+  line(811, 500, 811, 610);
+}
+
+function formatTime(seconds) {
+  var mins = floor(seconds / 60);
+  var secs = floor(seconds % 60);
+  return nf(mins, 1) + ":" + nf(secs, 2);
+}
+
+function drawWorld() {
+  noStroke(); fill(90, 90, 100);
+  roadSegments.forEach(function(r) { rect(r.x, r.y, r.w, r.h); });
+  drawRoadEdges();
+  fill(0, 120, 255, 180); noStroke();
+  puddles.forEach(function(p) { ellipse(p.x, p.y, p.w, p.h); });
+  noStroke();
+  fill(80, 50, 20, 200);
+  ellipse(oilPuddle.x, oilPuddle.y, oilPuddle.w, oilPuddle.h);
+  fill(60, 35, 10, 150);
+  ellipse(oilPuddle.x + 4, oilPuddle.y + 2, oilPuddle.w * 0.6, oilPuddle.h * 0.5);
+  fill(120, 80, 200, 40);
+  ellipse(oilPuddle.x - 5, oilPuddle.y - 3, oilPuddle.w * 0.4, oilPuddle.h * 0.3);
+  fill(40, 40, 45); noStroke();
+  rect(bufferZone.x, bufferZone.y, bufferZone.w, bufferZone.h);
+  rect(rackSystem.x, rackSystem.y, rackSystem.w, rackSystem.h);
+  zebraCrossings.forEach(function(c) {
+    var stripes = 6;
+    for (var i = 0; i < stripes; i++) {
+      fill(i % 2 === 0 ? 255 : color(0, 80, 220)); noStroke();
+      if (c.type === 'horizontal-road') {
+        var stripeH = c.h / stripes;
+        rect(c.x, c.y + i * stripeH, c.w, stripeH);
+      } else {
+        var stripeW = c.w / stripes;
+        rect(c.x + i * stripeW, c.y, stripeW, c.h);
+      }
+    }
+  });
+  bloodPuddles.forEach(function(bp) {
+    noStroke(); fill(180, 0, 0, 220); ellipse(bp.x, bp.y, bp.w, bp.h);
+    fill(120, 0, 0, 170); ellipse(bp.x + 5, bp.y + 3, bp.w * 0.5, bp.h * 0.4);
+  });
+  stroke(255, 200, 0); strokeWeight(3);
+  rackSystem.slots.forEach(function(s) {
+    line(s.x, s.y, s.x + 40, s.y);
+    if (s.full) { fill(150); noStroke(); rect(s.x + 5, s.y - 30, 30, 30); stroke(255, 200, 0); }
+  });
+  drawObstacles();
+  drawMovingObstacles();
+  drawExplosions();
+  drawPedestrians();
+  drawInstructor();
+  boxes.forEach(function(b) {
+    if (b.status === 'floor') { fill(b.color); stroke(0); strokeWeight(1); rect(b.x, b.y, b.w, b.h); }
+  });
+  drawForklift();
+  fill(0); noStroke(); textAlign(LEFT); textSize(16);
+  text("Driver: " + playerName + " | Score: " + score, 20, 30);
+  if (timeRemaining <= 60) { fill(220, 30, 30); } else { fill(0); }
+  textStyle(BOLD); textSize(18);
+  text("Time: " + formatTime(timeRemaining), 20, 50);
+  textStyle(NORMAL);
+}
+
+function drawObstacles() {
+  obstacles.forEach(function(o) {
+    if (!o.active) return;
+    noStroke(); fill(255, 100, 0);
+    triangle(o.x, o.y - o.h, o.x - o.w / 2, o.y, o.x + o.w / 2, o.y);
+    fill(255, 255, 255); rect(o.x - 3, o.y - 7, 6, 3);
+  });
+}
+
+function drawMovingObstacles() {
+  movingObstacles.forEach(function(mo) {
+    if (!mo.spawned) return;
+    push();
+    translate(mo.x, mo.y);
+    if (mo.wrecked) {
+      rotate(mo.angle);
+      fill(100, 100, 100); stroke(0); strokeWeight(1);
+      rect(-mo.w / 2, -mo.h / 2, mo.w, mo.h, 3);
+      stroke(80); strokeWeight(3);
+      line(mo.w / 2, -8, mo.w / 2 + 15, -8);
+      line(mo.w / 2, 8, mo.w / 2 + 15, 8);
+      fill(60, 60, 60, 150); noStroke();
+      rect(-mo.w / 4, -mo.h / 3, 12, mo.h * 0.6);
+      pop();
+      push();
+      translate(mo.x, mo.y);
+      noStroke();
+      var flicker1 = sin(frameCount * 0.15) * 4;
+      var flicker2 = cos(frameCount * 0.12) * 3;
+      var flicker3 = sin(frameCount * 0.2) * 5;
+      var flicker4 = cos(frameCount * 0.18) * 3;
+      fill(200, 30, 0, 200); ellipse(flicker1, -6, 20, 14);
+      fill(180, 20, 0, 180); ellipse(flicker2 + 5, -5, 14, 10);
+      fill(160, 10, 0, 160); ellipse(flicker3 - 4, -4, 12, 9);
+      fill(255, 140, 0, 210); ellipse(flicker2, -14, 16, 12);
+      fill(255, 120, 0, 180); ellipse(flicker4 + 3, -12, 12, 10);
+      fill(255, 100, 0, 160); ellipse(flicker1 - 3, -18, 10, 8);
+      fill(255, 200, 0, 190); ellipse(flicker3, -24, 10, 8);
+      fill(255, 220, 50, 150); ellipse(flicker4 - 2, -28, 7, 6);
+      fill(255, 180, 0, 120); ellipse(flicker1 + 2, -32, 5, 5);
+      fill(220, 50, 0, 150); ellipse(-10 + flicker2, -3, 8, 12);
+      fill(255, 130, 0, 140); ellipse(10 + flicker1, -3, 7, 10);
+      pop();
+    } else {
+      rotate(mo.angle);
+      fill(50, 180, 50); stroke(0); strokeWeight(1);
+      rect(-mo.w / 2, -mo.h / 2, mo.w, mo.h, 3);
+      stroke(150); strokeWeight(3);
+      line(mo.w / 2, -8, mo.w / 2 + 15, -8);
+      line(mo.w / 2, 8, mo.w / 2 + 15, 8);
+      fill(100, 150, 255, 150); noStroke();
+      rect(-mo.w / 4, -mo.h / 3, 12, mo.h * 0.6);
+      if (frameCount % 30 < 15) {
+        fill(255, 150, 0); noStroke();
+        ellipse(0, -mo.h / 2 - 5, 8, 8);
+      }
+      pop();
+    }
+  });
+}
+
+function drawExplosions() {
+  for (var i = explosions.length - 1; i >= 0; i--) {
+    var ex = explosions[i];
+    ex.frame++;
+    if (ex.frame > 45) { explosions.splice(i, 1); continue; }
+    var progress = ex.frame / 45;
+    var size = ex.size * (0.5 + progress * 1.5);
+    var alpha = 255 * (1 - progress);
+    push(); translate(ex.x, ex.y); noStroke();
+    fill(255, 80, 0, alpha * 0.6); ellipse(0, 0, size * 1.4, size * 1.4);
+    fill(255, 150, 0, alpha * 0.8); ellipse(0, 0, size, size);
+    fill(255, 255, 100, alpha); ellipse(0, 0, size * 0.5, size * 0.5);
+    for (var s = 0; s < 8; s++) {
+      var angle = (s / 8) * TWO_PI + ex.frame * 0.05;
+      var sparkDist = size * 0.6 * progress;
+      fill(255, 200, 0, alpha);
+      ellipse(cos(angle) * sparkDist, sin(angle) * sparkDist, 5 * (1 - progress), 5 * (1 - progress));
+    }
+    pop();
+  }
+}
+
+function createExplosion(x, y) {
+  explosions.push({ x: x, y: y, frame: 0, size: 60 });
+}
+
+function updateMovingObstacles() {
+  movingObstacles.forEach(function(mo) {
+    if (!mo.spawned || !mo.alive) return;
+    if (mo.entering) {
+      var dx = mo.enterTargetX - mo.x;
+      var dy = mo.enterTargetY - mo.y;
+      var d = sqrt(dx * dx + dy * dy);
+      if (d < mo.speed + 1) {
+        mo.x = mo.enterTargetX;
+        mo.y = mo.enterTargetY;
+        mo.entering = false;
+        mo.waypointIndex = 0;
+      } else {
+        mo.x += (dx / d) * mo.speed;
+        mo.y += (dy / d) * mo.speed;
+        mo.angle = atan2(dy, dx);
+      }
+      return;
+    }
+    var target = mo.waypoints[mo.waypointIndex];
+    var dx = target.x - mo.x;
+    var dy = target.y - mo.y;
+    var d = sqrt(dx * dx + dy * dy);
+    if (d < mo.speed + 1) {
+      mo.x = target.x; mo.y = target.y;
+      mo.waypointIndex = (mo.waypointIndex + 1) % mo.waypoints.length;
+    } else {
+      mo.x += (dx / d) * mo.speed;
+      mo.y += (dy / d) * mo.speed;
+      mo.angle = atan2(dy, dx);
+    }
+  });
+}
+
+function checkConeCollisions() {
+  obstacles.forEach(function(o) {
+    if (!o.active) return;
+    if (dist(forklift.x, forklift.y, o.x, o.y) < 20) {
+      o.active = false; score -= 200; triggerInstructorAngry(); return;
+    }
+    for (var i = 0; i <= 6; i++) {
+      var t = i / 6;
+      var checkX = forklift.x + cos(forklift.angle) * (25 + t * (20 + forklift.forkExt));
+      var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
+      if (dist(checkX, checkY, o.x, o.y) < 12) {
+        o.active = false; score -= 200; triggerInstructorAngry(); return;
+      }
+    }
+  });
+}
+
+function checkMovingObstacleCollisions() {
+  movingObstacles.forEach(function(mo) {
+    if (!mo.spawned || !mo.alive) return;
+    var hit = false;
+    if (dist(forklift.x, forklift.y, mo.x, mo.y) < 45) { hit = true; }
+    if (!hit) {
+      for (var i = 0; i <= 6; i++) {
+        var t = i / 6;
+        var checkX = forklift.x + cos(forklift.angle) * (25 + t * (20 + forklift.forkExt));
+        var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
+        if (dist(checkX, checkY, mo.x, mo.y) < 30) { hit = true; break; }
+      }
+    }
+    if (hit) {
+      mo.alive = false; mo.wrecked = true; score -= 300; triggerInstructorAngry();
+      if (forklift.carriedBox) {
+        var dropAngle = forklift.angle + HALF_PI;
+        var dropDist = 60;
+        var dropX = forklift.x + cos(dropAngle) * dropDist - 15;
+        var dropY = forklift.y + sin(dropAngle) * dropDist - 15;
+        safeDropBox(forklift.carriedBox, dropX, dropY, dropAngle);
+        var boxCenterX = forklift.carriedBox.x + 15;
+        var boxCenterY = forklift.carriedBox.y + 15;
+        pedestrians.forEach(function(p) {
+          if (!p.spawned || !p.alive) return;
+          if (dist(boxCenterX, boxCenterY, p.x, p.y) < 22) { hitPedestrian(p); }
+        });
+        forklift.carriedBox = null;
+      }
+      var pushAngle = atan2(mo.y - forklift.y, mo.x - forklift.x);
+      mo.x += cos(pushAngle) * 50;
+      mo.y += sin(pushAngle) * 50;
+      createExplosion(mo.x, mo.y);
+    }
+  });
+}
+
+function addBloodSplatters(count) {
+  for (var i = 0; i < count; i++) {
+    bloodSplatters.push({ x: random(-20, 20), y: random(-12, 12), size: random(3, 6) });
+  }
+}
+
+function puddleWash() {
+  var dotCount = bloodSplatters.length;
+  if (forkliftBloody) { forkliftBloody = false; }
+  else if (dotCount >= 11) { bloodSplatters.splice(bloodSplatters.length - 5, 5); }
+  else if (dotCount >= 6) { bloodSplatters.splice(bloodSplatters.length - 4, 4); }
+  else if (dotCount >= 1) { bloodSplatters = []; }
+}
+
+function getClosestEdgePoint(px, py) {
+  var distTop = py;
+  var distBottom = CH - py;
+  var distLeft = px;
+  var distRight = CW - px;
+  var minDist = min(distTop, distBottom, distLeft, distRight);
+  if (minDist === distTop) { return { x: px, y: -30 }; }
+  else if (minDist === distBottom) { return { x: px, y: CH + 30 }; }
+  else if (minDist === distLeft) { return { x: -30, y: py }; }
+  else { return { x: CW + 30, y: py }; }
+}
+
+function hitPedestrian(p) {
+  p.alive = false;
+  p.deathTimer = RESPAWN_TIME;
+  score -= 500;
+  bloodPuddles.push({ x: p.x, y: p.y, w: 30, h: 20 });
+  pedestriansKilled++;
+  triggerInstructorAngry();
+  var dotCount = bloodSplatters.length;
+  if (forkliftBloody) { }
+  else if (dotCount >= 11) { forkliftBloody = true; }
+  else if (dotCount >= 6) { addBloodSplatters(5); }
+  else if (dotCount >= 2) { addBloodSplatters(4); }
+  else { addBloodSplatters(2); }
+}
+
+function respawnPedestrian(p) {
+  p.alive = true;
+  p.respawning = true;
+  var edgePoint;
+  if (p.respawnFrom === 'left') { edgePoint = { x: -30, y: p.spawnY }; }
+  else if (p.respawnFrom === 'right') { edgePoint = { x: CW + 30, y: p.spawnY }; }
+  else if (p.respawnFrom === 'top') { edgePoint = { x: p.spawnX, y: -30 }; }
+  else if (p.respawnFrom === 'bottom') { edgePoint = { x: p.spawnX, y: CH + 30 }; }
+  else { edgePoint = getClosestEdgePoint(p.spawnX, p.spawnY); }
+  p.x = edgePoint.x; p.y = edgePoint.y;
+  p.respawnTargetX = p.spawnX; p.respawnTargetY = p.spawnY;
+  p.dx = 1; p.dy = 1;
+  if (p.type === 'patrol') { p.waypointIndex = 0; }
+}
+
+function updateRespawningPedestrian(p) {
+  var dx = p.respawnTargetX - p.x;
+  var dy = p.respawnTargetY - p.y;
+  var d = sqrt(dx * dx + dy * dy);
+  var walkSpeed = (p.type === 'patrol') ? p.speed : max(abs(p.sx), abs(p.sy), 2);
+  if (d < walkSpeed + 1) { p.x = p.respawnTargetX; p.y = p.respawnTargetY; p.respawning = false; }
+  else { p.x += (dx / d) * walkSpeed; p.y += (dy / d) * walkSpeed; }
+}
+
+function updateInstructor() {
+  instructor.angle = atan2(forklift.y - instructor.y, forklift.x - instructor.x);
+  if (instructorAngryTimer > 0) { instructorAngryTimer--; }
+}
+
+function drawInstructor() {
+  push();
+  translate(instructor.x, instructor.y);
+  var lookAngle = instructor.angle;
+  var visionLength = 120;
+  var visionSpread = 0.4;
+  noStroke(); fill(255, 255, 0, 25);
+  beginShape(); vertex(0, 0);
+  for (var i = 0; i <= 12; i++) {
+    var a = lookAngle - visionSpread + (visionSpread * 2) * (i / 12);
+    vertex(cos(a) * visionLength, sin(a) * visionLength);
+  }
+  endShape(CLOSE);
+  stroke(255, 200, 0, 100); strokeWeight(1.5);
+  line(0, 0, cos(lookAngle - visionSpread) * visionLength, sin(lookAngle - visionSpread) * visionLength);
+  line(0, 0, cos(lookAngle + visionSpread) * visionLength, sin(lookAngle + visionSpread) * visionLength);
+  noFill(); stroke(255, 200, 0, 60); strokeWeight(1);
+  arc(0, 0, visionLength * 2, visionLength * 2, lookAngle - visionSpread, lookAngle + visionSpread);
+  noStroke(); fill(0, 0, 0, 35); ellipse(1, 1, 20, 20);
+  fill(0, 80, 180); ellipse(0, 0, 20, 20);
+  noFill(); stroke(255, 255, 0); strokeWeight(2); ellipse(0, 0, 17, 17);
+  push(); rotate(lookAngle);
+  noStroke(); fill(240); ellipse(0, 0, 16, 13);
+  fill(255); ellipse(1, 0, 14, 11);
+  fill(230); ellipse(6, 0, 5, 8);
+  stroke(220); strokeWeight(0.8); line(-4, 0, 5, 0);
+  pop();
+  push(); rotate(lookAngle + HALF_PI);
+  stroke(0, 80, 180); strokeWeight(2.5); line(8, 0, 14, 0);
+  noStroke(); fill(255, 255, 240); rect(13, -4, 10, 7, 1);
+  stroke(180); strokeWeight(0.4);
+  line(15, -2, 21, -2); line(15, 0, 21, 0); line(15, 2, 20, 2);
+  stroke(30); strokeWeight(1); line(21, -3, 22, 2);
+  pop();
+  if (instructorAngryTimer > 0) {
+    var backAngle = lookAngle + PI;
+    var markX = cos(backAngle) * 14;
+    var markY = sin(backAngle) * 14;
+    var flashAlpha = (instructorAngryTimer % 10 < 5) ? 255 : 180;
+    push(); translate(markX, markY);
+    noStroke(); fill(220, 30, 30, flashAlpha); ellipse(0, 0, 14, 14);
+    fill(255, 255, 255, flashAlpha); noStroke();
+    textAlign(CENTER, CENTER); textStyle(BOLD); textSize(10);
+    text("!", 0, -1);
+    pop();
+  }
+  pop();
+}
+
+function allPedestriansDead() {
+  for (var i = 0; i < pedestrians.length; i++) { if (pedestrians[i].alive) return false; }
+  return true;
+}
+
+function getForkTipX() { return forklift.x + cos(forklift.angle) * (45 + forklift.forkExt); }
+function getForkTipY() { return forklift.y + sin(forklift.angle) * (45 + forklift.forkExt); }
+
+function updatePatrolPedestrian(p) {
+  var target = p.waypoints[p.waypointIndex];
+  var dx = target.x - p.x;
+  var dy = target.y - p.y;
+  var d = sqrt(dx * dx + dy * dy);
+  if (d < p.speed + 1) {
+    p.x = target.x; p.y = target.y;
+    p.waypointIndex = (p.waypointIndex + 1) % p.waypoints.length;
+  } else { p.x += (dx / d) * p.speed; p.y += (dy / d) * p.speed; }
+}
+
+function isSafe(px, py) {
+  var onRoad = false;
+  for (var i = 0; i < roadSegments.length; i++) {
+    var r = roadSegments[i];
+    if (px > r.x && px < r.x + r.w && py > r.y && py < r.y + r.h) { onRoad = true; break; }
+  }
+  var inRack = (px > rackSystem.x && px < rackSystem.x + rackSystem.w && py > rackSystem.y && py < rackSystem.y + rackSystem.h);
+  var inBuffer = (px > bufferZone.x && px < bufferZone.x + bufferZone.w && py > bufferZone.y && py < bufferZone.y + bufferZone.h);
+  return onRoad || inRack || inBuffer;
+}
+
+function checkCarriedPalletHitsPedestrians() {
+  if (!forklift.carriedBox) return;
+  var palletCenterX = forklift.x + cos(forklift.angle) * (35 + forklift.forkExt);
+  var palletCenterY = forklift.y + sin(forklift.angle) * (35 + forklift.forkExt);
+  pedestrians.forEach(function(p) {
+    if (!p.spawned || !p.alive) return;
+    if (dist(palletCenterX, palletCenterY, p.x, p.y) < 22) { hitPedestrian(p); }
+  });
+}
+
+function checkFloorBoxesHitPedestrians() {
+  boxes.forEach(function(b) {
+    if (b.status !== 'floor') return;
+    var boxCenterX = b.x + 15;
+    var boxCenterY = b.y + 15;
+    pedestrians.forEach(function(p) {
+      if (!p.spawned || !p.alive) return;
+      if (dist(boxCenterX, boxCenterY, p.x, p.y) < 20) { hitPedestrian(p); }
+    });
+  });
+}
+
+function checkOilPuddle() {
+  if (oilSpinning) return;
+  var inOil = dist(forklift.x, forklift.y, oilPuddle.x, oilPuddle.y) < 25;
+  if (inOil && !oilHit) {
+    oilHit = true; oilSpinning = true; oilSpinFrames = 0;
+    var spinDir = random() > 0.5 ? 1 : -1;
+    oilSpinTarget = random(PI, PI * 3) * spinDir;
+    oilSlideAngle = forklift.angle;
+    triggerInstructorAngry();
+    if (forklift.carriedBox) {
+      var dropAngle = random(TWO_PI);
+      var dropX = forklift.x + cos(dropAngle) * 50 - 15;
+      var dropY = forklift.y + sin(dropAngle) * 50 - 15;
+      safeDropBox(forklift.carriedBox, dropX, dropY, dropAngle);
+      forklift.carriedBox = null;
+    }
+  }
+  if (!inOil) { oilHit = false; }
+}
+
+function updateOilSpin() {
+  if (!oilSpinning) return;
+  oilSpinFrames++;
+  if (oilSpinFrames >= OIL_SPIN_DURATION) { oilSpinning = false; return; }
+  var progress = oilSpinFrames / OIL_SPIN_DURATION;
+  forklift.angle += oilSpinTarget / OIL_SPIN_DURATION * (1 - progress * 0.8);
+  var slideSpeed = (OIL_SLIDE_DISTANCE / OIL_SPIN_DURATION) * (1 - progress);
+  var slideX = forklift.x + cos(oilSlideAngle) * slideSpeed;
+  var slideY = forklift.y + sin(oilSlideAngle) * slideSpeed;
+  if (isSafe(slideX, slideY)) { forklift.x = slideX; forklift.y = slideY; }
+}
+
+function updateGame() {
+  gameFrames++;
+  checkPedestrianSpawns();
+  checkAIForkliftSpawn();
+  forklift.currentSpeedMult = 1;
+  var inPuddle = false;
+  puddles.forEach(function(p) {
+    if (dist(forklift.x, forklift.y, p.x, p.y) < 28) { forklift.currentSpeedMult = 0.2; inPuddle = true; }
+  });
+  if (inPuddle && !washedInPuddle) {
+    if (forkliftBloody || bloodSplatters.length > 0) { puddleWash(); }
+    washedInPuddle = true;
+  }
+  if (!inPuddle) { washedInPuddle = false; }
+  checkOilPuddle();
+  updateOilSpin();
+  if (!oilSpinning) {
+    if (keyIsDown(LEFT_ARROW)) forklift.angle -= forklift.turnSpeed;
+    if (keyIsDown(RIGHT_ARROW)) forklift.angle += forklift.turnSpeed;
+  }
+  var baseMove = 0;
+  if (!oilSpinning) { baseMove = keyIsDown(UP_ARROW) ? 2.5 : (keyIsDown(DOWN_ARROW) ? -1.2 : 0); }
+  var move = baseMove * forklift.currentSpeedMult;
+  var nX = forklift.x + cos(forklift.angle) * move;
+  var nY = forklift.y + sin(forklift.angle) * move;
+  var canMove = true;
+  if (!isSafe(nX, nY)) canMove = false;
+  boxes.forEach(function(b) {
+    if (b.status === 'floor' && dist(nX, nY, b.x + 15, b.y + 15) < 35) canMove = false;
+  });
+  movingObstacles.forEach(function(mo) {
+    if (mo.spawned && dist(nX, nY, mo.x, mo.y) < 35) canMove = false;
+  });
+  if (canMove) { forklift.x = nX; forklift.y = nY; }
+  if (keyIsDown(32)) forklift.forkExt = min(forklift.forkExt + 2, 40);
+  else forklift.forkExt = max(forklift.forkExt - 1, 0);
+  updateMovingObstacles();
+  updateInstructor();
+  checkConeCollisions();
+  checkMovingObstacleCollisions();
+  checkCarriedPalletHitsPedestrians();
+  checkFloorBoxesHitPedestrians();
+  pedestrians.forEach(function(p) {
+    if (!p.spawned) return;
+    if (!p.alive) {
+      p.deathTimer--;
+      if (p.deathTimer <= 0) { respawnPedestrian(p); }
+      return;
+    }
+    if (p.respawning) {
+      updateRespawningPedestrian(p);
+      if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); return; }
+      var forkHit = false;
+      for (var i = 0; i <= 8; i++) {
+        var t = i / 8;
+        var checkX = forklift.x + cos(forklift.angle) * (25 + t * (20 + forklift.forkExt));
+        var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
+        if (dist(checkX, checkY, p.x, p.y) < 18) { forkHit = true; break; }
+      }
+      if (forkHit) { hitPedestrian(p); }
+      return;
+    }
+    if (p.type === 'patrol') { updatePatrolPedestrian(p); }
+    else {
+      p.x += p.sx * p.dx; p.y += p.sy * p.dy;
+      if (p.sy !== 0 && (p.y < p.minY || p.y > p.maxY)) p.dy *= -1;
+      if (p.sx !== 0 && (p.x < p.minX || p.x > p.maxX)) p.dx *= -1;
+    }
+    if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); return; }
+    var forkCollision = false;
+    for (var i = 0; i <= 8; i++) {
+      var t = i / 8;
+      var checkX = forklift.x + cos(forklift.angle) * (25 + t * (20 + forklift.forkExt));
+      var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
+      if (dist(checkX, checkY, p.x, p.y) < 18) { forkCollision = true; break; }
+    }
+    if (forkCollision) { hitPedestrian(p); }
+  });
+  handleMechanics();
+}
+
+function handleMechanics() {
+  var fX = getForkTipX();
+  var fY = getForkTipY();
+  if (!forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 10) {
+    boxes.forEach(function(b) {
+      if (b.status === 'floor' && dist(fX, fY, b.x + 15, b.y + 15) < 20) {
+        forklift.carriedBox = b; b.status = 'carried'; score += 100;
+        if (!b.pickedFromBuffer) { b.pickedFromBuffer = true; palletsPickedUp++; }
+      }
+    });
+  } else if (forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 25) {
+    rackSystem.slots.forEach(function(s) {
+      if (!s.full && dist(fX, fY, s.x + 20, s.y) < 25) {
+        s.full = true; forklift.carriedBox.status = 'placed';
+        forklift.carriedBox = null; score += 500;
+        palletsStacked++;
+        if (boxes.every(function(b) { return b.status === 'placed'; })) endGame("GAME_WON");
+      }
+    });
+  }
+}
+
+function drawPedestrians() {
+  pedestrians.forEach(function(p) {
+    if (!p.spawned || !p.alive) return;
+    push(); translate(p.x, p.y);
+    var speedMult = (p.type === 'patrol') ? p.speed : max(abs(p.sx), abs(p.sy));
+    var swing = sin(frameCount * 0.1 * speedMult) * 8;
+    stroke(0); strokeWeight(2); line(-3, 8, -3 + swing, 15); line(3, 8, 3 - swing, 15);
+    noStroke(); fill(p.col); rect(-5, -5, 10, 12, 2);
+    fill(255, 220, 180); ellipse(0, -10, 12, 12);
+    fill(255, 255, 0); rect(-5, -2, 10, 4);
+    pop();
+  });
+}
+
+function drawForklift() {
+  push(); translate(forklift.x, forklift.y); rotate(forklift.angle);
+  if (keyIsDown(DOWN_ARROW) && frameCount % 20 < 10) {
+    push(); rotate(-forklift.angle);
+    fill(255, 0, 0); textAlign(CENTER); textStyle(BOLD); textSize(14);
+    text("\u25b6 BEEP!", 0, -30); pop();
+  }
+  stroke(200); strokeWeight(4);
+  line(25, -12, 45 + forklift.forkExt, -12);
+  line(25, 12, 45 + forklift.forkExt, 12);
+  if (forkliftBloody) { fill(200, 30, 30); }
+  else { fill(255, 215, 0); }
+  stroke(0); strokeWeight(2); rect(-25, -15, 50, 30, 3);
+  fill(100, 150, 255, 150); noStroke(); rect(0, -11, 15, 22);
+  noStroke();
+  bloodSplatters.forEach(function(dot) {
+    fill(160, 0, 0, 230); ellipse(dot.x, dot.y, dot.size, dot.size);
+  });
+  if (forkliftBloody) {
+    stroke(120, 0, 0); strokeWeight(1.5);
+    line(-15, 15, -15, 20); line(-5, 15, -5, 22);
+    line(5, 15, 5, 19); line(15, 15, 15, 21);
+    line(-10, 15, -10, 18); line(10, 15, 10, 23);
+  }
+  if (forklift.carriedBox) {
+    fill(forklift.carriedBox.color); noStroke();
+    rect(35 + forklift.forkExt - 15, -15, 30, 30);
+  }
+  pop();
+}
+
+function drawPauseScreen() {
+  fill(0, 0, 0, 160); rect(0, 0, width, height);
+  fill(255); textAlign(CENTER);
+  textSize(52); textStyle(BOLD); text("PAUSED", width / 2, height / 2 - 50);
+  textStyle(NORMAL); textSize(20);
+  text("Press P to Resume", width / 2, height / 2 + 10);
+  text("Press M for Main Menu", width / 2, height / 2 + 45);
+}
+
+function drawMenu() {
+  background(210); fill(0); textAlign(CENTER);
+  textSize(42); textStyle(BOLD); text("Forklift game", width / 2, height / 2 - 80);
+  textStyle(NORMAL); textSize(16); text("Enter name and press ENTER to start", width / 2, height / 2 - 40);
+  if (leaderboard.length > 0) {
+    fill(50); textSize(20); text("TOP 5 LEADERBOARD:", width / 2, height / 2 + 80);
+    leaderboard.slice(0, 5).forEach(function(e, i) {
+      text((i + 1) + ". " + e.name + ": " + e.score, width / 2, height / 2 + 110 + i * 25);
+    });
+    textSize(14); fill(80);
+    text("Press L to see full leaderboard (top 100)", width / 2, height / 2 + 245);
+  }
+  if (keyIsPressed && keyCode === ENTER) {
+    playerName = nameInput.value() || "Player";
+    nameInput.hide(); gameState = "PLAYING"; startTime = millis();
+  }
+  if (keyIsPressed && (key === 'l' || key === 'L')) {
+    nameInput.hide(); leaderboardScroll = 0; gameState = "LEADERBOARD";
+  }
+}
+
+function drawEndScreen() {
+  fill(0, 180); rect(0, 0, width, height);
+  fill(255); textAlign(CENTER); textSize(42);
+  if (gameState === "GAME_WON") {
+    text("Your Score: " + score, width / 2, height / 2 - 40);
+    textSize(20);
+    text("All pallets placed! Well done " + playerName + "!", width / 2, height / 2 + 10);
+  } else if (gameState === "TIME_UP") {
+    fill(220, 50, 50);
+    text("Time's Up!", width / 2, height / 2 - 40);
+    fill(255); textSize(20);
+    text("You ran out of time. No points awarded.", width / 2, height / 2 + 10);
+  }
+  fill(255); textSize(16);
+  text("R - Restart  |  L - Leaderboard  |  M - Main Menu", width / 2, height / 2 + 60);
+  if (keyIsPressed && (key === 'r' || key === 'R')) { initGame(); gameState = "PLAYING"; startTime = millis(); }
+  if (keyIsPressed && (key === 'l' || key === 'L')) { leaderboardScroll = 0; gameState = "LEADERBOARD"; }
+  if (keyIsPressed && (key === 'm' || key === 'M')) { initGame(); nameInput.show(); gameState = "NAME_INPUT"; }
+}
+
+function drawLeaderboard() {
+  background(30); fill(255); textAlign(CENTER);
+  textSize(36); textStyle(BOLD); text("LEADERBOARD - TOP 100", width / 2, 50);
+  textStyle(NORMAL);
+  var visibleCount = 15;
+  var itemH = 28;
+  var startY = 90;
+  var maxScroll = max(0, leaderboard.length - visibleCount);
+  leaderboardScroll = constrain(leaderboardScroll, 0, maxScroll);
+  var visible = leaderboard.slice(leaderboardScroll, leaderboardScroll + visibleCount);
+  visible.forEach(function(e, i) {
+    var rank = leaderboardScroll + i + 1;
+    if (rank === 1) fill(255, 215, 0);
+    else if (rank === 2) fill(192, 192, 192);
+    else if (rank === 3) fill(205, 127, 50);
+    else fill(200);
+    textSize(20);
+    text(rank + ". " + e.name + ":  " + e.score + " pts", width / 2, startY + i * itemH);
+  });
+  if (leaderboard.length === 0) { fill(180); textSize(18); text("No scores yet.", width / 2, height / 2); }
+  fill(150); textSize(14);
+  text("Showing " + (leaderboardScroll + 1) + "-" + min(leaderboardScroll + visibleCount, leaderboard.length) + " of " + leaderboard.length, width / 2, height - 70);
+  text("UP / DOWN arrows to scroll", width / 2, height - 50);
+  text("M - Main Menu  |  R - Play Again", width / 2, height - 25);
+  if (keyIsPressed && (key === 'm' || key === 'M')) { initGame(); nameInput.show(); gameState = "NAME_INPUT"; }
+  if (keyIsPressed && (key === 'r' || key === 'R')) { initGame(); gameState = "PLAYING"; startTime = millis(); }
+}
+function keyPressed() {
+  if (gameState === "LEADERBOARD") {
+    if (keyCode === UP_ARROW) leaderboardScroll = max(0, leaderboardScroll - 1);
+    if (keyCode === DOWN_ARROW) leaderboardScroll = min(max(0, leaderboard.length - 15), leaderboardScroll + 1);
+  }
+  if (key === 'p' || key === 'P') {
+    if (gameState === "PLAYING") { pauseStart = millis(); gameState = "PAUSED"; }
+    else if (gameState === "PAUSED") { pausedTime += millis() - pauseStart; gameState = "PLAYING"; }
+  }
+  if ((key === 'm' || key === 'M') && gameState === "PAUSED") { initGame(); nameInput.show(); gameState = "NAME_INPUT"; }
+}
+function loadLeaderboard() {
+  var d = localStorage.getItem('forkliftLeaderboard');
+  leaderboard = d ? JSON.parse(d) : [];
+}
+function saveScore() {
+  leaderboard.push({ name: playerName, score: score });
+  leaderboard.sort(function(a, b) { return b.score - a.score; });
+  leaderboard = leaderboard.slice(0, 100);
+  localStorage.setItem('forkliftLeaderboard', JSON.stringify(leaderboard));
+}
+function endGame(s) {
+  if (gameState === "PLAYING") {
+    gameState = s;
+    if (s === "GAME_WON") { saveScore(); }
+  }
+}
+  </script>
+</body>
+</html>
