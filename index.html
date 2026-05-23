@@ -17,7 +17,7 @@
 </head>
 <body>
   <script>
-    
+
 let forklift, rackSystem, bufferZone, nameInput;
 let boxes = [], pedestrians = [], leaderboard = [], puddles = [];
 let obstacles = [], movingObstacles = [];
@@ -43,6 +43,7 @@ let oilSpinTarget = 0;
 let oilSlideAngle = 0;
 let oilHit = false;
 let timeRemaining = 300;
+let lastPlayerName = "";
 
 const CW = 1056;
 const CH = 660;
@@ -69,12 +70,19 @@ const zebraCrossings = [
 ];
 
 function setup() {
-  createCanvas(CW, CH);
+  var cnv = createCanvas(CW, CH);
+  cnv.position((windowWidth - CW) / 2, (windowHeight - CH) / 2);
   nameInput = createInput('');
-  nameInput.position(width / 2 - 100, height / 2 + 20);
+  nameInput.position((windowWidth - 200) / 2, (windowHeight) / 2 + 20);
   nameInput.size(200);
   loadLeaderboard();
   initGame();
+}
+
+function windowResized() {
+  var cnv = select('canvas');
+  cnv.position((windowWidth - CW) / 2, (windowHeight - CH) / 2);
+  nameInput.position((windowWidth - 200) / 2, (windowHeight) / 2 + 20);
 }
 
 function initGame() {
@@ -923,11 +931,16 @@ function drawMenu() {
   background(210); fill(0); textAlign(CENTER);
   textSize(42); textStyle(BOLD); text("Forklift game", width / 2, height / 2 - 80);
   textStyle(NORMAL); textSize(16); text("Enter name and press ENTER to start", width / 2, height / 2 - 40);
+  nameInput.position((windowWidth - 200) / 2, (windowHeight) / 2 + 20);
   if (leaderboard.length > 0) {
     fill(50); textSize(20); text("TOP 5 LEADERBOARD:", width / 2, height / 2 + 80);
-    leaderboard.slice(0, 5).forEach(function(e, i) {
-      text((i + 1) + ". " + e.name + ": " + e.score, width / 2, height / 2 + 110 + i * 25);
-    });
+    var shownCount = 0;
+    for (var i = 0; i < leaderboard.length && shownCount < 5; i++) {
+      var e = leaderboard[i];
+      if (e.timedOut) continue;
+      shownCount++;
+      text(shownCount + ". " + e.name + ": " + e.score, width / 2, height / 2 + 110 + (shownCount - 1) * 25);
+    }
     textSize(14); fill(80);
     text("Press L to see full leaderboard (top 100)", width / 2, height / 2 + 245);
   }
@@ -944,17 +957,20 @@ function drawEndScreen() {
   fill(0, 180); rect(0, 0, width, height);
   fill(255); textAlign(CENTER); textSize(42);
   if (gameState === "GAME_WON") {
+    var timeBonus = floor(timeRemaining);
     text("Your Score: " + score, width / 2, height / 2 - 40);
     textSize(20);
     text("All pallets placed! Well done " + playerName + "!", width / 2, height / 2 + 10);
+    fill(100, 255, 100);
+    text("Time bonus: +" + timeBonus + " pts (" + timeBonus + " seconds left)", width / 2, height / 2 + 35);
   } else if (gameState === "TIME_UP") {
     fill(220, 50, 50);
     text("Time's Up!", width / 2, height / 2 - 40);
     fill(255); textSize(20);
-    text("You ran out of time. No points awarded.", width / 2, height / 2 + 10);
+    text("Run Out of Time - " + playerName, width / 2, height / 2 + 10);
   }
   fill(255); textSize(16);
-  text("R - Restart  |  L - Leaderboard  |  M - Main Menu", width / 2, height / 2 + 60);
+  text("R - Restart  |  L - Leaderboard  |  M - Main Menu", width / 2, height / 2 + 80);
   if (keyIsPressed && (key === 'r' || key === 'R')) { initGame(); gameState = "PLAYING"; startTime = millis(); }
   if (keyIsPressed && (key === 'l' || key === 'L')) { leaderboardScroll = 0; gameState = "LEADERBOARD"; }
   if (keyIsPressed && (key === 'm' || key === 'M')) { initGame(); nameInput.show(); gameState = "NAME_INPUT"; }
@@ -972,21 +988,33 @@ function drawLeaderboard() {
   var visible = leaderboard.slice(leaderboardScroll, leaderboardScroll + visibleCount);
   visible.forEach(function(e, i) {
     var rank = leaderboardScroll + i + 1;
-    if (rank === 1) fill(255, 215, 0);
+    var isLastPlayer = (e.id === lastPlayerName);
+    if (isLastPlayer) {
+      fill(0, 255, 100, 40); noStroke();
+      rect(width / 2 - 250, startY + i * itemH - 18, 500, 24, 4);
+    }
+    if (isLastPlayer) fill(0, 255, 100);
+    else if (rank === 1) fill(255, 215, 0);
     else if (rank === 2) fill(192, 192, 192);
     else if (rank === 3) fill(205, 127, 50);
     else fill(200);
     textSize(20);
-    text(rank + ". " + e.name + ":  " + e.score + " pts", width / 2, startY + i * itemH);
+    if (e.timedOut) {
+      text(rank + ". " + e.name + " - Run Out of Time", width / 2, startY + i * itemH);
+    } else {
+      text(rank + ". " + e.name + ":  " + e.score + " pts", width / 2, startY + i * itemH);
+    }
   });
   if (leaderboard.length === 0) { fill(180); textSize(18); text("No scores yet.", width / 2, height / 2); }
   fill(150); textSize(14);
   text("Showing " + (leaderboardScroll + 1) + "-" + min(leaderboardScroll + visibleCount, leaderboard.length) + " of " + leaderboard.length, width / 2, height - 70);
-  text("UP / DOWN arrows to scroll", width / 2, height - 50);
+  text("UP / DOWN arrows to scroll  |  GREEN = last player", width / 2, height - 50);
   text("M - Main Menu  |  R - Play Again", width / 2, height - 25);
   if (keyIsPressed && (key === 'm' || key === 'M')) { initGame(); nameInput.show(); gameState = "NAME_INPUT"; }
   if (keyIsPressed && (key === 'r' || key === 'R')) { initGame(); gameState = "PLAYING"; startTime = millis(); }
 }
+
+
 function keyPressed() {
   if (gameState === "LEADERBOARD") {
     if (keyCode === UP_ARROW) leaderboardScroll = max(0, leaderboardScroll - 1);
@@ -998,22 +1026,52 @@ function keyPressed() {
   }
   if ((key === 'm' || key === 'M') && gameState === "PAUSED") { initGame(); nameInput.show(); gameState = "NAME_INPUT"; }
 }
+
 function loadLeaderboard() {
   var d = localStorage.getItem('forkliftLeaderboard');
   leaderboard = d ? JSON.parse(d) : [];
 }
+
 function saveScore() {
-  leaderboard.push({ name: playerName, score: score });
-  leaderboard.sort(function(a, b) { return b.score - a.score; });
+  var entryId = playerName + "_" + Date.now();
+  lastPlayerName = entryId;
+  var timeBonus = floor(timeRemaining);
+  score += timeBonus;
+  leaderboard.push({ name: playerName, score: score, timedOut: false, id: entryId });
+  leaderboard.sort(function(a, b) {
+    if (a.timedOut && !b.timedOut) return 1;
+    if (!a.timedOut && b.timedOut) return -1;
+    if (a.timedOut && b.timedOut) return 0;
+    return b.score - a.score;
+  });
   leaderboard = leaderboard.slice(0, 100);
   localStorage.setItem('forkliftLeaderboard', JSON.stringify(leaderboard));
 }
+
+function saveTimedOut() {
+  var entryId = playerName + "_" + Date.now();
+  lastPlayerName = entryId;
+  leaderboard.push({ name: playerName, score: 0, timedOut: true, id: entryId });
+  leaderboard.sort(function(a, b) {
+    if (a.timedOut && !b.timedOut) return 1;
+    if (!a.timedOut && b.timedOut) return -1;
+    if (a.timedOut && b.timedOut) return 0;
+    return b.score - a.score;
+  });
+  leaderboard = leaderboard.slice(0, 100);
+  localStorage.setItem('forkliftLeaderboard', JSON.stringify(leaderboard));
+}
+
 function endGame(s) {
   if (gameState === "PLAYING") {
     gameState = s;
     if (s === "GAME_WON") { saveScore(); }
+    else if (s === "TIME_UP") { saveTimedOut(); }
   }
 }
+
+
+
   </script>
 </body>
 </html>
