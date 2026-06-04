@@ -390,6 +390,10 @@ function drawWorld() {
   textStyle(BOLD); textSize(18);
   text("Time: " + formatTime(timeRemaining), 20, 50);
   textStyle(NORMAL);
+fill(255); noStroke(); textAlign(LEFT); textSize(12);
+var controlsY = 70;
+text("Controls:", 20, controlsY);
+text("↑ Forward  |  ↓ Reverse  |  ← → Steer  |  SPACE Hold = Forks  |  P = Pause", 20, controlsY + 18);
 }
 
 function drawObstacles() {
