@@ -25,6 +25,7 @@ let bloodPuddles = [], explosions = [];
 let bloodSplatters = [];
 let tireBloodMarks = [];
 let tiresBloody = false;
+let forkliftKills = 0;
 let pedestriansKilled = 0;
 let gameState = "NAME_INPUT";
 let score = 0, playerName = "";
@@ -99,6 +100,7 @@ function initGame() {
   bloodSplatters = [];
   tireBloodMarks = [];
   tiresBloody = false;
+  forkliftKills = 0;
   pedestriansKilled = 0;
   washedInPuddle = false;
   forkliftBloody = false;
@@ -384,18 +386,23 @@ function drawWorld() {
   drawObstacles();
   drawMovingObstacles();
   drawExplosions();
-  drawPedestrians();
-  drawInstructor();
-  boxes.forEach(function(b) {
-    if (b.status === 'floor') { fill(b.color); stroke(0); strokeWeight(1); rect(b.x, b.y, b.w, b.h); }
-  });
 
+ // Blood tire marks on road
 noStroke();
   tireBloodMarks.forEach(function(m) {
     var alpha = map(m.age, 0, 500, 180, 60);
     fill(120, 0, 0, alpha);
     ellipse(m.x, m.y, 5, 5);
   });
+
+
+
+  drawPedestrians();
+  drawInstructor();
+  boxes.forEach(function(b) {
+    if (b.status === 'floor') { fill(b.color); stroke(0); strokeWeight(1); rect(b.x, b.y, b.w, b.h); }
+  });
+
   drawForklift();
   fill(0); noStroke(); textAlign(LEFT); textSize(16);
   text("Driver: " + playerName + " | Score: " + score, 20, 30);
@@ -597,7 +604,7 @@ function puddleWash() {
   else if (dotCount >= 6) { bloodSplatters.splice(bloodSplatters.length - 4, 4); }
   else if (dotCount >= 1) { bloodSplatters = []; }
   tiresBloody = false;
-  pedestriansKilled = 0;
+  forkliftKills = 0;
 }
 function getClosestEdgePoint(px, py) {
   var distTop = py;
@@ -624,7 +631,7 @@ function hitPedestrian(p) {
   else if (dotCount >= 6) { addBloodSplatters(5); }
   else if (dotCount >= 2) { addBloodSplatters(4); }
   else { addBloodSplatters(2); }
-  if (pedestriansKilled >= 3) { tiresBloody = true; }
+  
 }
 
 function respawnPedestrian(p) {
@@ -741,7 +748,7 @@ function checkCarriedPalletHitsPedestrians() {
   var palletCenterY = forklift.y + sin(forklift.angle) * (35 + forklift.forkExt);
   pedestrians.forEach(function(p) {
     if (!p.spawned || !p.alive) return;
-    if (dist(palletCenterX, palletCenterY, p.x, p.y) < 22) { hitPedestrian(p); }
+    if (dist(palletCenterX, palletCenterY, p.x, p.y) < 22) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } }
   });
 }
 
@@ -840,7 +847,7 @@ function updateGame() {
     }
     if (p.respawning) {
       updateRespawningPedestrian(p);
-      if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); return; }
+      if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } return; }
       var forkHit = false;
       for (var i = 0; i <= 8; i++) {
         var t = i / 8;
@@ -848,7 +855,7 @@ function updateGame() {
         var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
         if (dist(checkX, checkY, p.x, p.y) < 18) { forkHit = true; break; }
       }
-      if (forkHit) { hitPedestrian(p); }
+      if (forkHit) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } }
       return;
     }
     if (p.type === 'patrol') { updatePatrolPedestrian(p); }
@@ -857,7 +864,7 @@ function updateGame() {
       if (p.sy !== 0 && (p.y < p.minY || p.y > p.maxY)) p.dy *= -1;
       if (p.sx !== 0 && (p.x < p.minX || p.x > p.maxX)) p.dx *= -1;
     }
-    if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); return; }
+    if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } return; }
     var forkCollision = false;
     for (var i = 0; i <= 8; i++) {
       var t = i / 8;
@@ -865,7 +872,7 @@ function updateGame() {
       var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
       if (dist(checkX, checkY, p.x, p.y) < 18) { forkCollision = true; break; }
     }
-    if (forkCollision) { hitPedestrian(p); }
+    if (forkCollision) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } }
   });
   handleMechanics();
 
