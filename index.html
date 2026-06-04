@@ -389,8 +389,9 @@ function drawWorld() {
   if (timeRemaining <= 60) { fill(220, 30, 30); } else { fill(0); }
   textStyle(BOLD); textSize(18);
   text("Time: " + formatTime(timeRemaining), 20, 50);
-  textStyle(NORMAL);
+  textStyle(BOLD);
   fill(0); noStroke(); textAlign(LEFT); textSize(11);
+  text("Controls:", 20, 70);
   text("↑ Forward  |  ↓ Reverse", 20, 70);
   text("← → Steer", 20, 84);
   text("SPACE = Forks  |  P = Pause", 20, 98);
