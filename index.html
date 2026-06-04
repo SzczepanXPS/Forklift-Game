@@ -75,8 +75,9 @@ const zebraCrossings = [
 ];
 
 function preload() {
-  bgMusic = loadSound('music.mp3');
+  // nothing here - load music later
 }
+
 function setup() {
   var cnv = createCanvas(CW, CH);
   cnv.position((windowWidth - CW) / 2, (windowHeight - CH) / 2);
@@ -85,8 +86,9 @@ function setup() {
   nameInput.size(200);
   loadLeaderboard();
   initGame();
+  // Load music in background - won't block the game
+  bgMusic = loadSound('music.mp3', function() {}, function() { bgMusic = null; });
 }
-
 function windowResized() {
   var cnv = select('canvas');
   cnv.position((windowWidth - CW) / 2, (windowHeight - CH) / 2);
