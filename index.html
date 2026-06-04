@@ -2,7 +2,7 @@
 <html>
 <head>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.sound.min.js"></script>
+
   <style>
     html, body {
       margin: 0;
@@ -83,7 +83,7 @@ function setup() {
   loadLeaderboard();
   initGame();
   // Load music in background - won't block the game
-  bgMusic = loadSound('music.mp3', function() {}, function() { bgMusic = null; });
+  b
 }
 function windowResized() {
   var cnv = select('canvas');
@@ -998,19 +998,16 @@ function drawCountdown() {
   var elapsed = (millis() - countdownStart) / 1000;
   var secondsLeft = ceil(5 - elapsed);
   if (secondsLeft <= 0) {
-  gameState = "PLAYING";
-  startTime = millis();
-  if (!bgMusic) {
-    bgMusic = loadSound('music.mp3', function() {
-      bgMusic.setVolume(0.3);
-      bgMusic.loop();
-    });
-  } else if (!bgMusic.isPlaying()) {
-    bgMusic.setVolume(0.3);
-    bgMusic.loop();
+    gameState = "PLAYING";
+    startTime = millis();
+    if (!bgMusic) {
+      bgMusic = new Audio('music.mp3');
+      bgMusic.volume = 0.3;
+      bgMusic.loop = true;
+    }
+    bgMusic.play();
+    return;
   }
-  return;
-}
   fill(255); textAlign(CENTER); textSize(72); textStyle(BOLD);
   text(secondsLeft, width / 2, height / 2);
   textSize(20); textStyle(NORMAL);
@@ -1177,7 +1174,7 @@ function exportLeaderboard() {
 function endGame(s) {
   if (gameState === "PLAYING") {
     gameState = s;
-    if (bgMusic && bgMusic.isPlaying()) { bgMusic.stop(); }
+    if (bgMusic) { bgMusic.pause(); bgMusic.currentTime = 0; }
     if (s === "GAME_WON") { saveScore(); }
     else if (s === "TIME_UP") { saveTimedOut(); }
   }
