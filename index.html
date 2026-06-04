@@ -2,6 +2,7 @@
 <html>
 <head>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.sound.min.js"></script>
   <style>
     html, body {
       margin: 0;
@@ -17,12 +18,15 @@
 </head>
 <body>
   <script>
-
+let bgMusic;
 let forklift, rackSystem, bufferZone, nameInput;
 let boxes = [], pedestrians = [], leaderboard = [], puddles = [];
 let obstacles = [], movingObstacles = [];
 let bloodPuddles = [], explosions = [];
 let bloodSplatters = [];
+let tireBloodMarks = [];
+let tiresBloody = false;
+let forkliftKills = 0;
 let pedestriansKilled = 0;
 let gameState = "NAME_INPUT";
 let score = 0, playerName = "";
@@ -70,6 +74,9 @@ const zebraCrossings = [
   { x: 685, y: 340, w: 110, h: 50, type: 'vertical-road' }
 ];
 
+function preload() {
+  bgMusic = loadSound('music.mp3');
+}
 function setup() {
   var cnv = createCanvas(CW, CH);
   cnv.position((windowWidth - CW) / 2, (windowHeight - CH) / 2);
@@ -95,6 +102,9 @@ function initGame() {
   bloodPuddles = [];
   explosions = [];
   bloodSplatters = [];
+  tireBloodMarks = [];
+  tiresBloody = false;
+  forkliftKills = 0;
   pedestriansKilled = 0;
   washedInPuddle = false;
   forkliftBloody = false;
@@ -380,11 +390,23 @@ function drawWorld() {
   drawObstacles();
   drawMovingObstacles();
   drawExplosions();
+
+ // Blood tire marks on road
+noStroke();
+  tireBloodMarks.forEach(function(m) {
+    var alpha = map(m.age, 0, 500, 180, 60);
+    fill(120, 0, 0, alpha);
+    ellipse(m.x, m.y, 5, 5);
+  });
+
+
+
   drawPedestrians();
   drawInstructor();
   boxes.forEach(function(b) {
     if (b.status === 'floor') { fill(b.color); stroke(0); strokeWeight(1); rect(b.x, b.y, b.w, b.h); }
   });
+
   drawForklift();
   fill(0); noStroke(); textAlign(LEFT); textSize(16);
   text("Driver: " + playerName + " | Score: " + score, 20, 30);
@@ -585,8 +607,9 @@ function puddleWash() {
   else if (dotCount >= 11) { bloodSplatters.splice(bloodSplatters.length - 5, 5); }
   else if (dotCount >= 6) { bloodSplatters.splice(bloodSplatters.length - 4, 4); }
   else if (dotCount >= 1) { bloodSplatters = []; }
+  tiresBloody = false;
+  forkliftKills = 0;
 }
-
 function getClosestEdgePoint(px, py) {
   var distTop = py;
   var distBottom = CH - py;
@@ -612,6 +635,7 @@ function hitPedestrian(p) {
   else if (dotCount >= 6) { addBloodSplatters(5); }
   else if (dotCount >= 2) { addBloodSplatters(4); }
   else { addBloodSplatters(2); }
+  
 }
 
 function respawnPedestrian(p) {
@@ -728,7 +752,7 @@ function checkCarriedPalletHitsPedestrians() {
   var palletCenterY = forklift.y + sin(forklift.angle) * (35 + forklift.forkExt);
   pedestrians.forEach(function(p) {
     if (!p.spawned || !p.alive) return;
-    if (dist(palletCenterX, palletCenterY, p.x, p.y) < 22) { hitPedestrian(p); }
+    if (dist(palletCenterX, palletCenterY, p.x, p.y) < 22) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } }
   });
 }
 
@@ -739,11 +763,23 @@ function checkFloorBoxesHitPedestrians() {
     var boxCenterY = b.y + 15;
     pedestrians.forEach(function(p) {
       if (!p.spawned || !p.alive) return;
-      if (dist(boxCenterX, boxCenterY, p.x, p.y) < 20) { hitPedestrian(p); }
+      if (dist(boxCenterX, boxCenterY, p.x, p.y) < 20) {
+        var distToForklift = dist(boxCenterX, boxCenterY, forklift.x, forklift.y);
+        if (distToForklift > 100) {
+          // Far from forklift - kill but no blood on forklift
+          p.alive = false;
+          p.deathTimer = RESPAWN_TIME;
+          score -= 500;
+          bloodPuddles.push({ x: p.x, y: p.y, w: 30, h: 20 });
+          pedestriansKilled++;
+          triggerInstructorAngry();
+        } else {
+          hitPedestrian(p);
+        }
+      }
     });
   });
 }
-
 function checkOilPuddle() {
   if (oilSpinning) return;
   var inOil = dist(forklift.x, forklift.y, oilPuddle.x, oilPuddle.y) < 25;
@@ -827,7 +863,7 @@ function updateGame() {
     }
     if (p.respawning) {
       updateRespawningPedestrian(p);
-      if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); return; }
+      if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } return; }
       var forkHit = false;
       for (var i = 0; i <= 8; i++) {
         var t = i / 8;
@@ -835,7 +871,7 @@ function updateGame() {
         var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
         if (dist(checkX, checkY, p.x, p.y) < 18) { forkHit = true; break; }
       }
-      if (forkHit) { hitPedestrian(p); }
+      if (forkHit) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } }
       return;
     }
     if (p.type === 'patrol') { updatePatrolPedestrian(p); }
@@ -844,7 +880,7 @@ function updateGame() {
       if (p.sy !== 0 && (p.y < p.minY || p.y > p.maxY)) p.dy *= -1;
       if (p.sx !== 0 && (p.x < p.minX || p.x > p.maxX)) p.dx *= -1;
     }
-    if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); return; }
+    if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } return; }
     var forkCollision = false;
     for (var i = 0; i <= 8; i++) {
       var t = i / 8;
@@ -852,9 +888,35 @@ function updateGame() {
       var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
       if (dist(checkX, checkY, p.x, p.y) < 18) { forkCollision = true; break; }
     }
-    if (forkCollision) { hitPedestrian(p); }
+    if (forkCollision) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } }
   });
   handleMechanics();
+
+  // Blood tire marks
+  if (tiresBloody && abs(move) > 0.5 && gameFrames % 3 === 0) {
+    var backOffset = 20;
+    var bx = forklift.x - cos(forklift.angle) * backOffset;
+    var by = forklift.y - sin(forklift.angle) * backOffset;
+    var perpX = cos(forklift.angle + HALF_PI) * 10;
+    var perpY = sin(forklift.angle + HALF_PI) * 10;
+
+    // Check not on water puddle or oil
+    var onPuddle = false;
+    puddles.forEach(function(p) {
+      if (dist(bx, by, p.x, p.y) < 25) { onPuddle = true; }
+    });
+    var onOil = dist(bx, by, oilPuddle.x, oilPuddle.y) < 25;
+
+    if (!onPuddle && !onOil) {
+      tireBloodMarks.push({ x: bx + perpX, y: by + perpY, age: 0 });
+      tireBloodMarks.push({ x: bx - perpX, y: by - perpY, age: 0 });
+    }
+  }
+
+   // Age marks (but never remove)
+  for (var i = 0; i < tireBloodMarks.length; i++) {
+    if (tireBloodMarks[i].age < 500) { tireBloodMarks[i].age++; }
+  }
 }
 
 function handleMechanics() {
@@ -938,10 +1000,14 @@ function drawCountdown() {
   var elapsed = (millis() - countdownStart) / 1000;
   var secondsLeft = ceil(5 - elapsed);
   if (secondsLeft <= 0) {
-    gameState = "PLAYING";
-    startTime = millis();
-    return;
+  gameState = "PLAYING";
+  startTime = millis();
+  if (bgMusic && !bgMusic.isPlaying()) {
+    bgMusic.setVolume(0.3);
+    bgMusic.loop();
   }
+  return;
+}
   fill(255); textAlign(CENTER); textSize(72); textStyle(BOLD);
   text(secondsLeft, width / 2, height / 2);
   textSize(20); textStyle(NORMAL);
@@ -1108,6 +1174,7 @@ function exportLeaderboard() {
 function endGame(s) {
   if (gameState === "PLAYING") {
     gameState = s;
+    if (bgMusic && bgMusic.isPlaying()) { bgMusic.stop(); }
     if (s === "GAME_WON") { saveScore(); }
     else if (s === "TIME_UP") { saveTimedOut(); }
   }
