@@ -1013,7 +1013,7 @@ function drawLeaderboard() {
   fill(150); textSize(14);
   text("Showing " + (leaderboardScroll + 1) + "-" + min(leaderboardScroll + visibleCount, leaderboard.length) + " of " + leaderboard.length, width / 2, height - 70);
   text("UP / DOWN arrows to scroll  |  GREEN = last player", width / 2, height - 50);
-  text("M - Main Menu  |  R - Play Again", width / 2, height - 25);
+  text("M - Main Menu  |  R - Play Again  |  E - Export CSV", width / 2, height - 25);
   if (keyIsPressed && (key === 'm' || key === 'M')) { initGame(); nameInput.show(); gameState = "NAME_INPUT"; }
   if (keyIsPressed && (key === 'r' || key === 'R')) { initGame(); gameState = "PLAYING"; startTime = millis(); }
 }
@@ -1023,6 +1023,7 @@ function keyPressed() {
   if (gameState === "LEADERBOARD") {
     if (keyCode === UP_ARROW) leaderboardScroll = max(0, leaderboardScroll - 1);
     if (keyCode === DOWN_ARROW) leaderboardScroll = min(max(0, leaderboard.length - 15), leaderboardScroll + 1);
+    if (key === 'e' || key === 'E') exportLeaderboard();
   }
   if (key === 'p' || key === 'P') {
     if (gameState === "PLAYING") { pauseStart = millis(); gameState = "PAUSED"; }
@@ -1064,6 +1065,20 @@ function saveTimedOut() {
   });
   leaderboard = leaderboard.slice(0, 100);
   localStorage.setItem('forkliftLeaderboard', JSON.stringify(leaderboard));
+}
+
+function exportLeaderboard() {
+  var lines = [];
+  lines.push("Rank,Name,Score,Status");
+  for (var i = 0; i < leaderboard.length; i++) {
+    var e = leaderboard[i];
+    var status = e.timedOut ? "Timed Out" : "Completed";
+    var s = e.timedOut ? 0 : e.score;
+    lines.push((i + 1) + "," + e.name + "," + s + "," + status);
+  }
+  var d = new Date();
+  var filename = "leaderboard_" + d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate() + "_" + d.getHours() + "-" + d.getMinutes() + "-" + d.getSeconds() + ".csv";
+  saveStrings(lines, filename);
 }
 
 function endGame(s) {
