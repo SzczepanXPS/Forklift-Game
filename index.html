@@ -392,7 +392,7 @@ function drawWorld() {
 
 noStroke();
   tireBloodMarks.forEach(function(m) {
-    var alpha = map(m.age, 0, 500, 180, 0);
+    var alpha = map(m.age, 0, 500, 180, 60);
     fill(120, 0, 0, alpha);
     ellipse(m.x, m.y, 5, 5);
   });
@@ -890,10 +890,9 @@ function updateGame() {
     }
   }
 
-  // Fade old marks
-  for (var i = tireBloodMarks.length - 1; i >= 0; i--) {
-    tireBloodMarks[i].age++;
-    if (tireBloodMarks[i].age > 500) { tireBloodMarks.splice(i, 1); }
+   // Age marks (but never remove)
+  for (var i = 0; i < tireBloodMarks.length; i++) {
+    if (tireBloodMarks[i].age < 500) { tireBloodMarks[i].age++; }
   }
 }
 
