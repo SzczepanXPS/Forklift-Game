@@ -74,10 +74,6 @@ const zebraCrossings = [
   { x: 685, y: 340, w: 110, h: 50, type: 'vertical-road' }
 ];
 
-function preload() {
-  // nothing here - load music later
-}
-
 function setup() {
   var cnv = createCanvas(CW, CH);
   cnv.position((windowWidth - CW) / 2, (windowHeight - CH) / 2);
@@ -1004,7 +1000,12 @@ function drawCountdown() {
   if (secondsLeft <= 0) {
   gameState = "PLAYING";
   startTime = millis();
-  if (bgMusic && !bgMusic.isPlaying()) {
+  if (!bgMusic) {
+    bgMusic = loadSound('music.mp3', function() {
+      bgMusic.setVolume(0.3);
+      bgMusic.loop();
+    });
+  } else if (!bgMusic.isPlaying()) {
     bgMusic.setVolume(0.3);
     bgMusic.loop();
   }
