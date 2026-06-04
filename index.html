@@ -759,11 +759,23 @@ function checkFloorBoxesHitPedestrians() {
     var boxCenterY = b.y + 15;
     pedestrians.forEach(function(p) {
       if (!p.spawned || !p.alive) return;
-      if (dist(boxCenterX, boxCenterY, p.x, p.y) < 20) { hitPedestrian(p); }
+      if (dist(boxCenterX, boxCenterY, p.x, p.y) < 20) {
+        var distToForklift = dist(boxCenterX, boxCenterY, forklift.x, forklift.y);
+        if (distToForklift > 100) {
+          // Far from forklift - kill but no blood on forklift
+          p.alive = false;
+          p.deathTimer = RESPAWN_TIME;
+          score -= 500;
+          bloodPuddles.push({ x: p.x, y: p.y, w: 30, h: 20 });
+          pedestriansKilled++;
+          triggerInstructorAngry();
+        } else {
+          hitPedestrian(p);
+        }
+      }
     });
   });
 }
-
 function checkOilPuddle() {
   if (oilSpinning) return;
   var inOil = dist(forklift.x, forklift.y, oilPuddle.x, oilPuddle.y) < 25;
