@@ -44,6 +44,7 @@ let oilSlideAngle = 0;
 let oilHit = false;
 let timeRemaining = 300;
 let lastPlayerName = "";
+let countdownStart = 0;
 
 const CW = 1056;
 const CH = 660;
@@ -291,6 +292,7 @@ function draw() {
   background(210);
   if (gameState === "NAME_INPUT") drawMenu();
   else if (gameState === "LEADERBOARD") drawLeaderboard();
+  else if (gameState === "COUNTDOWN") { drawWorld(); drawCountdown(); }
   else if (gameState === "PAUSED") { drawWorld(); drawPauseScreen(); }
   else {
     nameInput.hide();
@@ -931,6 +933,22 @@ function drawPauseScreen() {
   text("Press M for Main Menu", width / 2, height / 2 + 45);
 }
 
+function drawCountdown() {
+  fill(0, 0, 0, 120); rect(0, 0, width, height);
+  var elapsed = (millis() - countdownStart) / 1000;
+  var secondsLeft = ceil(5 - elapsed);
+  if (secondsLeft <= 0) {
+    gameState = "PLAYING";
+    startTime = millis();
+    return;
+  }
+  fill(255); textAlign(CENTER); textSize(72); textStyle(BOLD);
+  text(secondsLeft, width / 2, height / 2);
+  textSize(20); textStyle(NORMAL);
+  text("Get Ready!", width / 2, height / 2 - 60);
+  text("Look around the map...", width / 2, height / 2 + 50);
+}
+
 function drawMenu() {
   background(210); fill(0); textAlign(CENTER);
   textSize(42); textStyle(BOLD); text("Forklift game", width / 2, height / 2 - 80);
@@ -948,9 +966,9 @@ function drawMenu() {
     textSize(14); fill(80);
     text("Press L to see full leaderboard (top 100)", width / 2, height / 2 + 245);
   }
-  if (keyIsPressed && keyCode === ENTER) {
+   if (keyIsPressed && keyCode === ENTER) {
     playerName = nameInput.value() || "Player";
-    nameInput.hide(); gameState = "PLAYING"; startTime = millis();
+    nameInput.hide(); gameState = "COUNTDOWN"; countdownStart = millis();
   }
   if (keyIsPressed && (key === 'l' || key === 'L')) {
     nameInput.hide(); leaderboardScroll = 0; gameState = "LEADERBOARD";
@@ -1013,9 +1031,9 @@ function drawLeaderboard() {
   fill(150); textSize(14);
   text("Showing " + (leaderboardScroll + 1) + "-" + min(leaderboardScroll + visibleCount, leaderboard.length) + " of " + leaderboard.length, width / 2, height - 70);
   text("UP / DOWN arrows to scroll  |  GREEN = last player", width / 2, height - 50);
-  text("M - Main Menu  |  R - Play Again  |  E - Export CSV", width / 2, height - 25);
+  text("M - Main Menu  |   E - Export CSV", width / 2, height - 25);
   if (keyIsPressed && (key === 'm' || key === 'M')) { initGame(); nameInput.show(); gameState = "NAME_INPUT"; }
-  if (keyIsPressed && (key === 'r' || key === 'R')) { initGame(); gameState = "PLAYING"; startTime = millis(); }
+  
 }
 
 
