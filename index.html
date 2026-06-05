@@ -931,23 +931,25 @@ function handleMechanics() {
   var fY = getForkTipY();
   if (!forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 8) {
     boxes.forEach(function(b) {
-      if (b.status === 'floor' && dist(fX, fY, b.x + 15, b.y + 15) < 20) {
+      if (b.status === 'floor' && dist(fX, fY, b.x + 15, b.y + 15) < 25) {
         forklift.carriedBox = b; b.status = 'carried'; score += 100;
         if (!b.pickedFromBuffer) { b.pickedFromBuffer = true; palletsPickedUp++; }
       }
     });
   } else if (forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 15) {
+    var placed = false;
     rackSystem.slots.forEach(function(s) {
+      if (placed) return;
       if (!s.full && dist(fX, fY, s.x + 20, s.y) < 35) {
         s.full = true; forklift.carriedBox.status = 'placed';
         forklift.carriedBox = null; score += 500;
         palletsStacked++;
+        placed = true;
         if (boxes.every(function(b) { return b.status === 'placed'; })) endGame("GAME_WON");
       }
     });
   }
 }
-
 function drawPedestrians() {
   pedestrians.forEach(function(p) {
     if (!p.spawned || !p.alive) return;
