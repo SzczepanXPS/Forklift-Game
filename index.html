@@ -853,7 +853,7 @@ function updateGame() {
     if (mo.spawned && dist(nX, nY, mo.x, mo.y) < 35) canMove = false;
   });
   if (canMove) { forklift.x = nX; forklift.y = nY; }
-  if (keyIsDown(32)) forklift.forkExt = min(forklift.forkExt + 2, 40);
+  if (keyIsDown(32)) forklift.forkExt = min(forklift.forkExt + 2, 20);
   else forklift.forkExt = max(forklift.forkExt - 1, 0);
   updateMovingObstacles();
   updateInstructor();
@@ -929,7 +929,7 @@ function updateGame() {
 function handleMechanics() {
   var fX = getForkTipX();
   var fY = getForkTipY();
-  if (!forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 10) {
+  if (!forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 8) {
     boxes.forEach(function(b) {
       if (b.status === 'floor' && dist(fX, fY, b.x + 15, b.y + 15) < 20) {
         forklift.carriedBox = b; b.status = 'carried'; score += 100;
@@ -938,7 +938,7 @@ function handleMechanics() {
     });
   } else if (forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 25) {
     rackSystem.slots.forEach(function(s) {
-      if (!s.full && dist(fX, fY, s.x + 20, s.y) < 25) {
+      if (!s.full && dist(fX, fY, s.x + 20, s.y) < 15) {
         s.full = true; forklift.carriedBox.status = 'placed';
         forklift.carriedBox = null; score += 500;
         palletsStacked++;
