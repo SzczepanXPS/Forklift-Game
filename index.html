@@ -610,10 +610,10 @@ function puddleWash() {
   else if (dotCount >= 11) { bloodSplatters.splice(bloodSplatters.length - 5, 5); }
   else if (dotCount >= 6) { bloodSplatters.splice(bloodSplatters.length - 4, 4); }
   else if (dotCount >= 1) { bloodSplatters = []; }
+  if (tiresBloody) { washedOnce = true; }
   tiresBloody = false;
   forkliftKills = 0;
-  washedOnce = true;
-} 
+}  
   function getClosestEdgePoint(px, py) {
   var distTop = py;
   var distBottom = CH - py;
