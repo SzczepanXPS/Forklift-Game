@@ -604,13 +604,14 @@ function addBloodSplatters(count) {
 function puddleWash() {
   var dotCount = bloodSplatters.length;
   if (forkliftBloody) { forkliftBloody = false; }
+  else if (dotCount >= 17) { bloodSplatters.splice(bloodSplatters.length - 6, 6); }
   else if (dotCount >= 11) { bloodSplatters.splice(bloodSplatters.length - 5, 5); }
   else if (dotCount >= 6) { bloodSplatters.splice(bloodSplatters.length - 4, 4); }
   else if (dotCount >= 1) { bloodSplatters = []; }
   tiresBloody = false;
   forkliftKills = 0;
 }
-function getClosestEdgePoint(px, py) {
+  function getClosestEdgePoint(px, py) {
   var distTop = py;
   var distBottom = CH - py;
   var distLeft = px;
@@ -631,7 +632,8 @@ function hitPedestrian(p) {
   triggerInstructorAngry();
   var dotCount = bloodSplatters.length;
   if (forkliftBloody) { }
-  else if (dotCount >= 11) { forkliftBloody = true; }
+  else if (dotCount >= 17) { forkliftBloody = true; }
+  else if (dotCount >= 11) { addBloodSplatters(6); }
   else if (dotCount >= 6) { addBloodSplatters(5); }
   else if (dotCount >= 2) { addBloodSplatters(4); }
   else { addBloodSplatters(2); }
