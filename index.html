@@ -936,9 +936,9 @@ function handleMechanics() {
         if (!b.pickedFromBuffer) { b.pickedFromBuffer = true; palletsPickedUp++; }
       }
     });
-  } else if (forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 25) {
+  } else if (forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 15) {
     rackSystem.slots.forEach(function(s) {
-      if (!s.full && dist(fX, fY, s.x + 20, s.y) < 15) {
+      if (!s.full && dist(fX, fY, s.x + 20, s.y) < 35) {
         s.full = true; forklift.carriedBox.status = 'placed';
         forklift.carriedBox = null; score += 500;
         palletsStacked++;
