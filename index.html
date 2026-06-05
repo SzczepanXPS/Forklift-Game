@@ -31,6 +31,7 @@ let pedestriansKilled = 0;
 let gameState = "NAME_INPUT";
 let score = 0, playerName = "";
 let startTime, pausedTime = 0, pauseStart = 0;
+let palletLost = false;
 let leaderboardScroll = 0;
 let gameFrames = 0;
 let washedInPuddle = false;
@@ -117,6 +118,7 @@ function initGame() {
   oilSlideAngle = 0;
   oilHit = false;
   washedOnce = false;
+  palletLost = false;
   timeRemaining = GAME_TIME;
   forklift = { x: 80, y: 600, w: 50, h: 35, angle: -PI / 2, speed: 0, forkExt: 0, carriedBox: null, turnSpeed: 0.05, currentSpeedMult: 1 };
 
@@ -420,6 +422,13 @@ function drawWorld() {
   text("↑ Forward  |  ↓ Reverse", 20, 84);
   text("← → Steer", 20, 98);
   text("SPACE = Forks  |  P = Pause", 20, 112);
+  textStyle(NORMAL); textSize(10); fill(0, 150, 0);
+  text("SCORING:", 20, 130);
+  text("+300 pickup from buffer | +500 place pallet on racking", 20, 142);
+  text("+1000 clean run (no hits) | +500 perfect run (no pallet lost)", 20, 154);
+  text("+10/sec time bonus", 20, 166);
+  fill(180, 0, 0);
+  text("-500 pedestrian | -200 cone | -500 AI forklift", 20, 178);
 }
 
 function drawObstacles() {
@@ -574,7 +583,7 @@ function checkMovingObstacleCollisions() {
       }
     }
     if (hit) {
-      mo.alive = false; mo.wrecked = true; score -= 300; triggerInstructorAngry();
+      mo.alive = false; mo.wrecked = true; score -= 500; triggerInstructorAngry();
       if (forklift.carriedBox) {
         var dropAngle = forklift.angle + HALF_PI;
         var dropDist = 60;
@@ -797,6 +806,7 @@ function checkOilPuddle() {
     oilSlideAngle = forklift.angle;
     triggerInstructorAngry();
     if (forklift.carriedBox) {
+      palletLost = true;
       var dropAngle = random(TWO_PI);
       var dropX = forklift.x + cos(dropAngle) * 50 - 15;
       var dropY = forklift.y + sin(dropAngle) * 50 - 15;
@@ -932,8 +942,8 @@ function handleMechanics() {
   if (!forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 8) {
     boxes.forEach(function(b) {
       if (b.status === 'floor' && dist(fX, fY, b.x + 15, b.y + 15) < 25) {
-        forklift.carriedBox = b; b.status = 'carried'; score += 100;
-        if (!b.pickedFromBuffer) { b.pickedFromBuffer = true; palletsPickedUp++; }
+        forklift.carriedBox = b; b.status = 'carried'; 
+        if (!b.pickedFromBuffer) { b.pickedFromBuffer = true; palletsPickedUp++; score +=300; }
       }
     });
   } else if (forklift.carriedBox && keyIsDown(32) && forklift.forkExt > 15) {
@@ -1056,12 +1066,22 @@ function drawEndScreen() {
   fill(0, 180); rect(0, 0, width, height);
   fill(255); textAlign(CENTER); textSize(42);
   if (gameState === "GAME_WON") {
-    var timeBonus = floor(timeRemaining);
+    var timeBonus = floor(timeRemaining) * 10;
     text("Your Score: " + score, width / 2, height / 2 - 40);
     textSize(20);
     text("All pallets placed! Well done " + playerName + "!", width / 2, height / 2 + 10);
     fill(100, 255, 100);
-    text("Time bonus: +" + timeBonus + " pts (" + timeBonus + " seconds left)", width / 2, height / 2 + 35);
+    text("Time bonus: +" + timeBonus + " pts (" + floor(timeRemaining) + "s left)", width / 2, height / 2 + 35);
+var coneHit = obstacles.some(function(o) { return !o.active; });
+    var noHit = (pedestriansKilled === 0 && !movingObstacles[0].wrecked && !coneHit);
+    if (noHit) {
+      fill(255, 215, 0);
+      text("Clean run bonus: +1000 pts", width / 2, height / 2 + 55);
+      if (!palletLost) {
+        text("Perfect run bonus: +500 pts", width / 2, height / 2 + 75);
+      }
+    }
+
   } else if (gameState === "TIME_UP") {
     fill(220, 50, 50);
     text("Time's Up!", width / 2, height / 2 - 40);
@@ -1135,7 +1155,7 @@ function loadLeaderboard() {
 function saveScore() {
   var entryId = playerName + "_" + Date.now();
   lastPlayerName = entryId;
-  var timeBonus = floor(timeRemaining);
+  var timeBonus = floor(timeRemaining) * 10;
   score += timeBonus;
   leaderboard.push({ name: playerName, score: score, timedOut: false, id: entryId });
   leaderboard.sort(function(a, b) {
@@ -1186,11 +1206,18 @@ function endGame(s) {
   if (gameState === "PLAYING") {
     gameState = s;
     if (bgMusic) { bgMusic.pause(); bgMusic.currentTime = 0; }
-    if (s === "GAME_WON") { saveScore(); }
+    if (s === "GAME_WON") {
+      var coneHit = obstacles.some(function(o) { return !o.active; });
+      var noHit = (pedestriansKilled === 0 && !movingObstacles[0].wrecked && !coneHit);
+      if (noHit) {
+        score += 1000;
+        if (!palletLost) { score += 500; }
+      }
+      saveScore();
+    }
     else if (s === "TIME_UP") { saveTimedOut(); }
   }
 }
-
 
 
   </script>
