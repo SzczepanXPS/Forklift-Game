@@ -360,7 +360,18 @@ function drawWorld() {
   ellipse(oilPuddle.x + 4, oilPuddle.y + 2, oilPuddle.w * 0.6, oilPuddle.h * 0.5);
   fill(120, 80, 200, 40);
   ellipse(oilPuddle.x - 5, oilPuddle.y - 3, oilPuddle.w * 0.4, oilPuddle.h * 0.3);
-  fill(40, 40, 45); noStroke();
+  bloodPuddles.forEach(function(bp) {
+    noStroke(); fill(180, 0, 0, 220); ellipse(bp.x, bp.y, bp.w, bp.h);
+    fill(120, 0, 0, 170); ellipse(bp.x + 5, bp.y + 3, bp.w * 0.5, bp.h * 0.4);
+  });
+noStroke();
+  tireBloodMarks.forEach(function(m) {
+    var alpha = map(m.age, 0, 500, 180, 60);
+    fill(120, 0, 0, alpha);
+    ellipse(m.x, m.y, 5, 5);
+  });
+
+fill(40, 40, 45); noStroke();
   rect(bufferZone.x, bufferZone.y, bufferZone.w, bufferZone.h);
   rect(rackSystem.x, rackSystem.y, rackSystem.w, rackSystem.h);
   zebraCrossings.forEach(function(c) {
@@ -376,10 +387,7 @@ function drawWorld() {
       }
     }
   });
-  bloodPuddles.forEach(function(bp) {
-    noStroke(); fill(180, 0, 0, 220); ellipse(bp.x, bp.y, bp.w, bp.h);
-    fill(120, 0, 0, 170); ellipse(bp.x + 5, bp.y + 3, bp.w * 0.5, bp.h * 0.4);
-  });
+  
   stroke(255, 200, 0); strokeWeight(3);
   rackSystem.slots.forEach(function(s) {
     line(s.x, s.y, s.x + 40, s.y);
