@@ -1034,13 +1034,21 @@ function drawCountdown() {
   textSize(20); textStyle(NORMAL);
   text("Get Ready!", width / 2, height / 2 - 60);
   text("Look around the map...", width / 2, height / 2 + 50);
-   textSize(14); fill(0, 255, 100);
-  text("SCORING:", width / 2, height / 2 + 90);
-  text("+300 pallet pickup | +500 place pallet on racking", width / 2, height / 2 + 110);
-  text("+1000 clean run (no hits) | +500 perfect run (no pallet lost)", width / 2, height / 2 + 130);
-  text("+10/sec time bonus", width / 2, height / 2 + 150);
-  fill(255, 100, 100);
-  text("-500 hit pedestrian | -200 hit cone | -500 hit forklift", width / 2, height / 2 + 170);	
+    fill(0, 0, 0, 180);
+  rect(width / 2 - 220, height / 2 + 70, 440, 130, 10);
+  stroke(255, 215, 0); strokeWeight(2);
+  rect(width / 2 - 220, height / 2 + 70, 440, 130, 10);
+  noStroke();
+  fill(255, 215, 0); textSize(16); textStyle(BOLD);
+  text("SCORING", width / 2, height / 2 + 95);
+  textSize(13);
+  fill(100, 255, 100);
+  text("+300 first pickup | +500 place pallet on racking", width / 2, height / 2 + 120);
+  text("+1000 clean run (no hits) | +500 perfect run (no pallet lost)", width / 2, height / 2 + 140);
+  text("+10/sec time bonus", width / 2, height / 2 + 160);
+  fill(255, 120, 120); textSize(13);
+  text("-500 pedestrian | -200 cone | -500 AI forklift", width / 2, height / 2 + 180);
+  textStyle(NORMAL);	
 }
 
 function drawMenu() {
