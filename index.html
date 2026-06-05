@@ -397,13 +397,7 @@ fill(40, 40, 45); noStroke();
   drawMovingObstacles();
   drawExplosions();
 
- // Blood tire marks on road
-noStroke();
-  tireBloodMarks.forEach(function(m) {
-    var alpha = map(m.age, 0, 500, 180, 60);
-    fill(120, 0, 0, alpha);
-    ellipse(m.x, m.y, 5, 5);
-  });
+ 
 
 
 
