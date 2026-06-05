@@ -49,6 +49,7 @@ let oilHit = false;
 let timeRemaining = 300;
 let lastPlayerName = "";
 let countdownStart = 0;
+let washedOnce = false;
 
 const CW = 1056;
 const CH = 660;
@@ -115,6 +116,7 @@ function initGame() {
   oilSpinTarget = 0;
   oilSlideAngle = 0;
   oilHit = false;
+  washedOnce = false;
   timeRemaining = GAME_TIME;
   forklift = { x: 80, y: 600, w: 50, h: 35, angle: -PI / 2, speed: 0, forkExt: 0, carriedBox: null, turnSpeed: 0.05, currentSpeedMult: 1 };
 
@@ -610,7 +612,8 @@ function puddleWash() {
   else if (dotCount >= 1) { bloodSplatters = []; }
   tiresBloody = false;
   forkliftKills = 0;
-}
+  washedOnce = true;
+} 
   function getClosestEdgePoint(px, py) {
   var distTop = py;
   var distBottom = CH - py;
@@ -754,7 +757,7 @@ function checkCarriedPalletHitsPedestrians() {
   var palletCenterY = forklift.y + sin(forklift.angle) * (35 + forklift.forkExt);
   pedestrians.forEach(function(p) {
     if (!p.spawned || !p.alive) return;
-    if (dist(palletCenterX, palletCenterY, p.x, p.y) < 22) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } }
+    if (dist(palletCenterX, palletCenterY, p.x, p.y) < 22) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3 || washedOnce) { tiresBloody = true; }}
   });
 }
 
@@ -865,7 +868,7 @@ function updateGame() {
     }
     if (p.respawning) {
       updateRespawningPedestrian(p);
-      if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } return; }
+      if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3 || washedOnce) { tiresBloody = true; }return;}
       var forkHit = false;
       for (var i = 0; i <= 8; i++) {
         var t = i / 8;
@@ -873,7 +876,7 @@ function updateGame() {
         var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
         if (dist(checkX, checkY, p.x, p.y) < 18) { forkHit = true; break; }
       }
-      if (forkHit) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } }
+      if (forkHit) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3 || washedOnce) { tiresBloody = true; } }
       return;
     }
     if (p.type === 'patrol') { updatePatrolPedestrian(p); }
@@ -882,7 +885,7 @@ function updateGame() {
       if (p.sy !== 0 && (p.y < p.minY || p.y > p.maxY)) p.dy *= -1;
       if (p.sx !== 0 && (p.x < p.minX || p.x > p.maxX)) p.dx *= -1;
     }
-    if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } return; }
+    if (dist(forklift.x, forklift.y, p.x, p.y) < 25) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3 || washedOnce) { tiresBloody = true; } return; }
     var forkCollision = false;
     for (var i = 0; i <= 8; i++) {
       var t = i / 8;
@@ -890,7 +893,7 @@ function updateGame() {
       var checkY = forklift.y + sin(forklift.angle) * (25 + t * (20 + forklift.forkExt));
       if (dist(checkX, checkY, p.x, p.y) < 18) { forkCollision = true; break; }
     }
-    if (forkCollision) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3) { tiresBloody = true; } }
+    if (forkCollision) { hitPedestrian(p); forkliftKills++; if (forkliftKills >= 3 || washedOnce) { tiresBloody = true; } }
   });
   handleMechanics();
 
