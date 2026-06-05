@@ -424,11 +424,11 @@ function drawWorld() {
   text("SPACE = Forks  |  P = Pause", 20, 112);
   textStyle(NORMAL); textSize(10); fill(0, 150, 0);
   text("SCORING:", 20, 130);
-  text("+300 pickup from buffer | +500 place pallet on racking", 20, 142);
+  text("+300 pickup pallet from buffer | +500 place pallet on racking", 20, 142);
   text("+1000 clean run (no hits) | +500 perfect run (no pallet lost)", 20, 154);
   text("+10/sec time bonus", 20, 166);
   fill(180, 0, 0);
-  text("-500 pedestrian | -200 cone | -500 AI forklift", 20, 178);
+  text("-500 hit pedestrian | -200 hit cone | -500 hit forklift", 20, 178);
 }
 
 function drawObstacles() {
@@ -1017,7 +1017,7 @@ function drawPauseScreen() {
 function drawCountdown() {
   fill(0, 0, 0, 120); rect(0, 0, width, height);
   var elapsed = (millis() - countdownStart) / 1000;
-  var secondsLeft = ceil(5 - elapsed);
+  var secondsLeft = ceil(10 - elapsed);
   if (secondsLeft <= 0) {
     gameState = "PLAYING";
     startTime = millis();
@@ -1034,6 +1034,13 @@ function drawCountdown() {
   textSize(20); textStyle(NORMAL);
   text("Get Ready!", width / 2, height / 2 - 60);
   text("Look around the map...", width / 2, height / 2 + 50);
+   textSize(14); fill(0, 255, 100);
+  text("SCORING:", width / 2, height / 2 + 90);
+  text("+300 pallet pickup | +500 place pallet on racking", width / 2, height / 2 + 110);
+  text("+1000 clean run (no hits) | +500 perfect run (no pallet lost)", width / 2, height / 2 + 130);
+  text("+10/sec time bonus", width / 2, height / 2 + 150);
+  fill(255, 100, 100);
+  text("-500 hit pedestrian | -200 hit cone | -500 hit forklift", width / 2, height / 2 + 170);	
 }
 
 function drawMenu() {
@@ -1089,7 +1096,7 @@ var coneHit = obstacles.some(function(o) { return !o.active; });
     text("Run Out of Time - " + playerName, width / 2, height / 2 + 10);
   }
   fill(255); textSize(16);
-  text("R - Restart  |  L - Leaderboard  |  M - Main Menu", width / 2, height / 2 + 80);
+  text("R - Restart  |  L - Leaderboard  |  M - Main Menu", width / 2, height / 2 + 110);
   if (keyIsPressed && (key === 'r' || key === 'R')) { initGame(); gameState = "PLAYING"; startTime = millis(); }
   if (keyIsPressed && (key === 'l' || key === 'L')) { leaderboardScroll = 0; gameState = "LEADERBOARD"; }
   if (keyIsPressed && (key === 'm' || key === 'M')) { initGame(); nameInput.show(); gameState = "NAME_INPUT"; }
