@@ -1074,7 +1074,7 @@ function drawMenu() {
     playerName = nameInput.value() || "Player";
     nameInput.hide(); gameState = "COUNTDOWN"; countdownStart = millis();
   }
-  if (keyIsPressed && (key === 'l' || key === 'L')) {
+  if (keyIsPressed && (key === 'l' || key === 'L') && !nameInput.elt.matches(':focus')) {
     nameInput.hide(); leaderboardScroll = 0; gameState = "LEADERBOARD";
   }
 }
